@@ -15,9 +15,8 @@ nonisolated struct MarkdownEditorDocument: FileDocument {
         self.text = text
     }
 
-    static let readableContentTypes = [
-        UTType(importedAs: "com.example.plain-text")
-    ]
+    static let readableContentTypes = [UTType.plainText, UTType.data]
+    static let writableContentTypes = [UTType.plainText]
 
     init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents,

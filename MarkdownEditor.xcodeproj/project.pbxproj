@@ -6,7 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		431A51C92EA69631002EC43E /* Markdown.icon in Resources */ = {isa = PBXBuildFile; fileRef = 431A51C82EA69631002EC43E /* Markdown.icon */; };
+		431A51CC2EA6978B002EC43E /* markdown-cheat-sheet.md in Resources */ = {isa = PBXBuildFile; fileRef = 431A51CB2EA6978B002EC43E /* markdown-cheat-sheet.md */; };
+		431A51CD2EA6978B002EC43E /* markdown_overview.md in Resources */ = {isa = PBXBuildFile; fileRef = 431A51CA2EA6978B002EC43E /* markdown_overview.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		431A51C82EA69631002EC43E /* Markdown.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Markdown.icon; sourceTree = "<group>"; };
+		431A51CA2EA6978B002EC43E /* markdown_overview.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = markdown_overview.md; sourceTree = "<group>"; };
+		431A51CB2EA6978B002EC43E /* markdown-cheat-sheet.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "markdown-cheat-sheet.md"; sourceTree = "<group>"; };
 		43C8D0E62EA694BD006C5AC5 /* MarkdownEditor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarkdownEditor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -45,6 +54,9 @@
 		43C8D0DD2EA694BD006C5AC5 = {
 			isa = PBXGroup;
 			children = (
+				431A51CA2EA6978B002EC43E /* markdown_overview.md */,
+				431A51CB2EA6978B002EC43E /* markdown-cheat-sheet.md */,
+				431A51C82EA69631002EC43E /* Markdown.icon */,
 				43C8D0E82EA694BD006C5AC5 /* MarkdownEditor */,
 				43C8D0E72EA694BD006C5AC5 /* Products */,
 			);
@@ -122,6 +134,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				431A51CC2EA6978B002EC43E /* markdown-cheat-sheet.md in Resources */,
+				431A51CD2EA6978B002EC43E /* markdown_overview.md in Resources */,
+				431A51C92EA69631002EC43E /* Markdown.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -141,7 +156,7 @@
 		43C8D0F42EA694BF006C5AC5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Markdown;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -153,6 +168,7 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MarkdownEditor/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -174,7 +190,7 @@
 		43C8D0F52EA694BF006C5AC5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Markdown;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -186,6 +202,7 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MarkdownEditor/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

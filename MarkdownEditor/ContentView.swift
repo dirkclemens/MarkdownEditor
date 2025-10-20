@@ -11,7 +11,8 @@ struct ContentView: View {
     @Binding var document: MarkdownEditorDocument
 
     var body: some View {
-        TextEditor(text: $document.text)
+        MarkdownEditor(text: $document.text)
+            .padding()
     }
 }
 
