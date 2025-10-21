@@ -8,15 +8,20 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-nonisolated struct MarkdownEditorDocument: FileDocument {
+extension UTType {
+    static var markdown: UTType {
+        UTType(importedAs: "net.daringfireball.markdown")
+    }
+}
+
+struct MarkdownEditorDocument: FileDocument {
     var text: String
 
     init(text: String = "Hello, world!") {
         self.text = text
     }
 
-    static let readableContentTypes = [UTType.plainText, UTType.data]
-    static let writableContentTypes = [UTType.plainText]
+    static var readableContentTypes: [UTType] { [.markdown, .plainText] }
 
     init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents,

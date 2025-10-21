@@ -411,8 +411,9 @@ class LineNumberView: NSView {
         
         guard let textView = textView,
               let scrollView = scrollView,
-              let layoutManager = textView.layoutManager,
-              let textContainer = textView.textContainer else {
+              let layoutManager = textView.layoutManager//,
+              //let textContainer = textView.textContainer
+        else {
             return
         }
         
