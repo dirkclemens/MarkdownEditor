@@ -8,19 +8,91 @@
 import SwiftUI
 import AppKit
 
+struct MarkdownEditorTheme {
+    let backgroundColor: NSColor
+    let textColor: NSColor
+    let headerColors: [NSColor]
+    let boldColor: NSColor
+    let italicColor: NSColor
+    let strikethroughColor: NSColor
+    let codeColor: NSColor
+    let codeBackgroundColor: NSColor
+    let blockquoteColor: NSColor
+    let blockquoteSymbolColor: NSColor
+    let tableColor: NSColor
+    let imageColor: NSColor
+    let imageSymbolColor: NSColor
+    let linkColor: NSColor
+    let listColor: NSColor
+    let font: NSFont
+    let boldFont: NSFont
+    let italicFont: NSFont
+}
+
+let lightTheme = MarkdownEditorTheme(
+    backgroundColor: NSColor.textBackgroundColor,
+    textColor: NSColor.textColor,
+    headerColors: [NSColor.systemBlue, NSColor.systemIndigo, NSColor.systemPurple, NSColor.systemTeal, NSColor.systemGreen, NSColor.systemOrange],
+    boldColor: NSColor.textColor,
+    italicColor: NSColor.textColor,
+    strikethroughColor: NSColor.systemGray,
+    codeColor: NSColor.systemRed,
+    codeBackgroundColor: NSColor.controlBackgroundColor,
+    blockquoteColor: NSColor.systemGray,
+    blockquoteSymbolColor: NSColor.systemOrange,
+    tableColor: NSColor.systemPurple,
+    imageColor: NSColor.systemBlue,
+    imageSymbolColor: NSColor.systemRed,
+    linkColor: NSColor.systemBlue,
+    listColor: NSColor.systemGreen,
+    font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular),
+    boldFont: NSFont.boldSystemFont(ofSize: 14),
+    italicFont: NSFontManager.shared.convert(NSFont.monospacedSystemFont(ofSize: 14, weight: .regular), toHaveTrait: .italicFontMask)
+)
+
+let darkTheme = MarkdownEditorTheme(
+    backgroundColor: NSColor(calibratedRed: 0.13, green: 0.13, blue: 0.22, alpha: 1), // #222
+    textColor: NSColor(calibratedWhite: 0.97, alpha: 1), // #f8f8f8
+    headerColors: [
+        NSColor(calibratedRed: 0.27, green: 0.44, blue: 0.78, alpha: 1), // blue
+        NSColor(calibratedRed: 0.20, green: 0.60, blue: 0.86, alpha: 1), // cyan
+        NSColor(calibratedRed: 0.36, green: 0.60, blue: 0.80, alpha: 1), // blue-gray
+        NSColor(calibratedRed: 0.18, green: 0.36, blue: 0.60, alpha: 1), // dark blue
+        NSColor(calibratedRed: 0.13, green: 0.13, blue: 0.22, alpha: 1), // fallback
+        NSColor.systemOrange
+    ],
+    boldColor: NSColor(calibratedWhite: 0.97, alpha: 1),
+    italicColor: NSColor(calibratedWhite: 0.90, alpha: 1),
+    strikethroughColor: NSColor(calibratedWhite: 0.60, alpha: 1),
+    codeColor: NSColor(calibratedRed: 0.20, green: 0.60, blue: 0.86, alpha: 1), // cyan
+    codeBackgroundColor: NSColor(calibratedRed: 0.18, green: 0.18, blue: 0.28, alpha: 1), // slightly lighter than bg
+    blockquoteColor: NSColor(calibratedRed: 0.36, green: 0.60, blue: 0.80, alpha: 1), // blue-gray
+    blockquoteSymbolColor: NSColor.systemOrange,
+    tableColor: NSColor(calibratedRed: 0.27, green: 0.44, blue: 0.78, alpha: 1), // blue
+    imageColor: NSColor(calibratedRed: 0.20, green: 0.60, blue: 0.86, alpha: 1), // cyan
+    imageSymbolColor: NSColor.systemRed,
+    linkColor: NSColor(calibratedRed: 0.27, green: 0.44, blue: 0.78, alpha: 1), // blue
+    listColor: NSColor.systemGreen,
+    font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular),
+    boldFont: NSFont.boldSystemFont(ofSize: 14),
+    italicFont: NSFontManager.shared.convert(NSFont.monospacedSystemFont(ofSize: 14, weight: .regular), toHaveTrait: .italicFontMask)
+)
+
 struct MarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     let gutterWidth: CGFloat
     let fontSize: CGFloat
     let separatorWidth: CGFloat
+    let theme: MarkdownEditorTheme
     var onCursorPositionChanged: ((Int) -> Void)? = nil
     var onSelectionChanged: ((NSRange) -> Void)? = nil
     
-    init(text: Binding<String>, gutterWidth: CGFloat = 50, fontSize: CGFloat = 14, separatorWidth: CGFloat = 1.0, onCursorPositionChanged: ((Int) -> Void)? = nil, onSelectionChanged: ((NSRange) -> Void)? = nil) {
+    init(text: Binding<String>, gutterWidth: CGFloat = 50, fontSize: CGFloat = 14, separatorWidth: CGFloat = 1.0, theme: MarkdownEditorTheme, onCursorPositionChanged: ((Int) -> Void)? = nil, onSelectionChanged: ((NSRange) -> Void)? = nil) {
         self._text = text
         self.gutterWidth = gutterWidth
         self.fontSize = fontSize
         self.separatorWidth = separatorWidth
+        self.theme = theme
         self.onCursorPositionChanged = onCursorPositionChanged
         self.onSelectionChanged = onSelectionChanged
     }
@@ -41,8 +113,8 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.isRichText = false
         textView.allowsUndo = true
         textView.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        textView.textColor = .textColor
-        textView.backgroundColor = .textBackgroundColor
+        textView.backgroundColor = theme.backgroundColor
+        textView.textColor = theme.textColor
         textView.string = text
         
         // Configure text view
@@ -94,11 +166,13 @@ struct MarkdownEditor: NSViewRepresentable {
     
     func updateNSView(_ nsView: NSView, context: Context) {
         guard let textView = context.coordinator.textView else { return }
+        textView.backgroundColor = theme.backgroundColor
+        textView.textColor = theme.textColor
         if textView.string != text {
             textView.string = text
-            context.coordinator.applyMarkdownSyntaxHighlighting(to: textView)
             context.coordinator.updateLineNumbers()
         }
+        context.coordinator.applyMarkdownSyntaxHighlighting(to: textView)
     }
     
     func makeCoordinator() -> Coordinator {
@@ -143,13 +217,13 @@ struct MarkdownEditor: NSViewRepresentable {
         func applyMarkdownSyntaxHighlighting(to textView: NSTextView) {
             let text = textView.string
             let range = NSRange(location: 0, length: text.count)
-            // Reset formatting
             let baseFont = NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
             textView.font = baseFont
             textView.textStorage?.removeAttribute(.foregroundColor, range: range)
             textView.textStorage?.removeAttribute(.font, range: range)
             textView.textStorage?.addAttribute(.font, value: baseFont, range: range)
-            textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.textColor, range: range)
+            let fgColor = parent.theme.textColor
+            textView.textStorage?.addAttribute(.foregroundColor, value: fgColor, range: range)
             
             // Apply syntax highlighting
             highlightHeaders(in: textView, text: text)
@@ -167,217 +241,162 @@ struct MarkdownEditor: NSViewRepresentable {
         private func highlightHeaders(in textView: NSTextView, text: String) {
             let headerPattern = "^(#{1,6})\\s+(.*)$"
             let regex = try! NSRegularExpression(pattern: headerPattern, options: [.anchorsMatchLines])
-            
+            let theme = parent.theme
             regex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                
-                let headerLevel = match.range(at: 1).length
-                
-                // Use consistent font size for proper line alignment
+                let headerLevel = min(match.range(at: 1).length, theme.headerColors.count)
                 let headerFont = NSFont.boldSystemFont(ofSize: parent.fontSize)
-                
-                // Different colors for different header levels to maintain visual hierarchy
-                let headerColor: NSColor = {
-                    switch headerLevel {
-                    case 1: return NSColor.systemBlue
-                    case 2: return NSColor.systemIndigo
-                    case 3: return NSColor.systemPurple
-                    case 4: return NSColor.systemTeal
-                    case 5: return NSColor.systemGreen
-                    case 6: return NSColor.systemOrange
-                    default: return NSColor.systemBlue
-                    }
-                }()
-                
+                let headerColor = theme.headerColors[headerLevel - 1]
                 textView.textStorage?.addAttribute(.font, value: headerFont, range: match.range)
                 textView.textStorage?.addAttribute(.foregroundColor, value: headerColor, range: match.range)
             }
         }
-        
         private func highlightBold(in textView: NSTextView, text: String) {
             let boldPattern = "\\*\\*(.*?)\\*\\*"
             let regex = try! NSRegularExpression(pattern: boldPattern)
-            
+            let theme = parent.theme
             regex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                let boldFont = NSFont.boldSystemFont(ofSize: parent.fontSize)
+                let boldFont = theme.boldFont
                 textView.textStorage?.addAttribute(.font, value: boldFont, range: match.range)
+                textView.textStorage?.addAttribute(.foregroundColor, value: theme.boldColor, range: match.range)
             }
         }
-        
         private func highlightItalic(in textView: NSTextView, text: String) {
             let italicPattern = "\\*(.*?)\\*"
             let regex = try! NSRegularExpression(pattern: italicPattern)
-            
+            let theme = parent.theme
             regex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                let italicFont = NSFont.systemFont(ofSize: parent.fontSize).withTraits([.italic])
+                let italicFont = theme.italicFont
                 textView.textStorage?.addAttribute(.font, value: italicFont, range: match.range)
+                textView.textStorage?.addAttribute(.foregroundColor, value: theme.italicColor, range: match.range)
             }
         }
-        
         private func highlightStrikethrough(in textView: NSTextView, text: String) {
             let strikethroughPattern = "~~(.*?)~~"
             let regex = try! NSRegularExpression(pattern: strikethroughPattern)
-            
+            let theme = parent.theme
             regex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
                 textView.textStorage?.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: match.range)
-                textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemGray, range: match.range)
+                textView.textStorage?.addAttribute(.foregroundColor, value: theme.strikethroughColor, range: match.range)
             }
         }
-        
         private func highlightCode(in textView: NSTextView, text: String) {
-            // Inline code first (to avoid conflicts with code blocks)
-            let inlineCodePattern = "`([^`\n]+)`"
+            let theme = parent.theme
+            let inlineCodePattern = "`([^`\\n]+)`"
             let inlineRegex = try! NSRegularExpression(pattern: inlineCodePattern)
-            
             inlineRegex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                let codeFont = NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
+                let codeFont = theme.font
                 textView.textStorage?.addAttribute(.font, value: codeFont, range: match.range)
-                textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemRed, range: match.range)
-                textView.textStorage?.addAttribute(.backgroundColor, value: NSColor.controlBackgroundColor, range: match.range)
+                textView.textStorage?.addAttribute(.foregroundColor, value: theme.codeColor, range: match.range)
+                textView.textStorage?.addAttribute(.backgroundColor, value: theme.codeBackgroundColor, range: match.range)
             }
-            
-            // Code blocks - handle multiline properly
             let lines = text.components(separatedBy: .newlines)
             var inCodeBlock = false
             var codeBlockStart = 0
             var currentLine = 0
-            
             for (_, line) in lines.enumerated() {
                 let lineStart = text.distance(from: text.startIndex, to: text.index(text.startIndex, offsetBy: currentLine))
-                
                 if line.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
                     if !inCodeBlock {
-                        // Start of code block
                         inCodeBlock = true
                         codeBlockStart = lineStart
                     } else {
-                        // End of code block
                         inCodeBlock = false
                         let lineEnd = lineStart + line.count
                         let codeBlockRange = NSRange(location: codeBlockStart, length: lineEnd - codeBlockStart)
-                        
-                        let codeFont = NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
+                        let codeFont = theme.font
                         textView.textStorage?.addAttribute(.font, value: codeFont, range: codeBlockRange)
-                        textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemRed, range: codeBlockRange)
-                        textView.textStorage?.addAttribute(.backgroundColor, value: NSColor.controlBackgroundColor, range: codeBlockRange)
+                        textView.textStorage?.addAttribute(.foregroundColor, value: theme.codeColor, range: codeBlockRange)
+                        textView.textStorage?.addAttribute(.backgroundColor, value: theme.codeBackgroundColor, range: codeBlockRange)
                     }
                 }
-                
-                currentLine += line.count + 1 // +1 for newline character
+                currentLine += line.count + 1
                 if currentLine > text.count { break }
             }
         }
-        
         private func highlightBlockquotes(in textView: NSTextView, text: String) {
             let blockquotePattern = "^(\\s*>+\\s?)(.*)"
             let regex = try! NSRegularExpression(pattern: blockquotePattern, options: [.anchorsMatchLines])
-            
+            let theme = parent.theme
             regex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                
-                // Highlight the entire blockquote line
-                textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemGray, range: match.range)
-                
-                // Make the > symbol more prominent
+                textView.textStorage?.addAttribute(.foregroundColor, value: theme.blockquoteColor, range: match.range)
                 let symbolRange = match.range(at: 1)
-                textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemOrange, range: symbolRange)
-                textView.textStorage?.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: parent.fontSize), range: symbolRange)
+                textView.textStorage?.addAttribute(.foregroundColor, value: theme.blockquoteSymbolColor, range: symbolRange)
+                textView.textStorage?.addAttribute(.font, value: theme.boldFont, range: symbolRange)
             }
         }
-        
         private func highlightTables(in textView: NSTextView, text: String) {
             let lines = text.components(separatedBy: .newlines)
             var currentPosition = 0
-            
+            let theme = parent.theme
             for (index, line) in lines.enumerated() {
                 let lineStart = currentPosition
                 let lineEnd = currentPosition + line.count
-                
-                // Check if line contains table syntax (has at least one |)
                 if line.contains("|") {
                     let lineRange = NSRange(location: lineStart, length: line.count)
-                    
-                    // Check if this is a table separator line (contains dashes and pipes)
                     let separatorPattern = "^\\s*\\|?\\s*[-:]+\\s*(\\|\\s*[-:]+\\s*)*\\|?\\s*$"
                     let separatorRegex = try! NSRegularExpression(pattern: separatorPattern)
-                    
                     if separatorRegex.firstMatch(in: line, range: NSRange(location: 0, length: line.count)) != nil {
-                        // This is a table separator line - highlight it differently
-                        textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemPurple, range: lineRange)
-                        textView.textStorage?.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: parent.fontSize), range: lineRange)
+                        textView.textStorage?.addAttribute(.foregroundColor, value: theme.tableColor, range: lineRange)
+                        textView.textStorage?.addAttribute(.font, value: theme.boldFont, range: lineRange)
                     } else {
-                        // This is a regular table row - highlight the pipes
                         let pipePattern = "\\|"
                         let pipeRegex = try! NSRegularExpression(pattern: pipePattern)
-                        
                         pipeRegex.enumerateMatches(in: line, range: NSRange(location: 0, length: line.count)) { match, _, _ in
                             guard let match = match else { return }
                             let globalRange = NSRange(location: lineStart + match.range.location, length: match.range.length)
-                            textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemPurple, range: globalRange)
-                            textView.textStorage?.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: parent.fontSize), range: globalRange)
+                            textView.textStorage?.addAttribute(.foregroundColor, value: theme.tableColor, range: globalRange)
+                            textView.textStorage?.addAttribute(.font, value: theme.boldFont, range: globalRange)
                         }
-                        
-                        // Check if this looks like a header row (previous or next line is separator)
                         let isHeader = (index > 0 && lines[index - 1].range(of: "[-:]", options: .regularExpression) != nil) ||
                                       (index < lines.count - 1 && lines[index + 1].range(of: "[-:]", options: .regularExpression) != nil)
-                        
                         if isHeader {
-                            textView.textStorage?.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: parent.fontSize), range: lineRange)
+                            textView.textStorage?.addAttribute(.font, value: theme.boldFont, range: lineRange)
                         }
                     }
                 }
-                
-                currentPosition = lineEnd + 1 // +1 for newline
+                currentPosition = lineEnd + 1
                 if currentPosition > text.count { break }
             }
         }
-        
         private func highlightImages(in textView: NSTextView, text: String) {
             let imagePattern = "!\\[([^\\]]*)\\]\\(([^\\)]+)\\)"
             let regex = try! NSRegularExpression(pattern: imagePattern)
-            
+            let theme = parent.theme
             regex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                
-                // Highlight the entire image syntax in blue (consistent with links)
-                textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemBlue, range: match.range)
-                
-                // Make the ! symbol more prominent with red color
+                textView.textStorage?.addAttribute(.foregroundColor, value: theme.imageColor, range: match.range)
                 let exclamationRange = NSRange(location: match.range.location, length: 1)
-                textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemRed, range: exclamationRange)
-                textView.textStorage?.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: parent.fontSize), range: exclamationRange)
-                
-                // Highlight alt text in italic (only if not empty)
+                textView.textStorage?.addAttribute(.foregroundColor, value: theme.imageSymbolColor, range: exclamationRange)
+                textView.textStorage?.addAttribute(.font, value: theme.boldFont, range: exclamationRange)
                 let altTextRange = match.range(at: 1)
                 if altTextRange.length > 0 {
-                    let italicFont = NSFont.systemFont(ofSize: parent.fontSize).withTraits([.italic])
-                    textView.textStorage?.addAttribute(.font, value: italicFont, range: altTextRange)
+                    textView.textStorage?.addAttribute(.font, value: theme.italicFont, range: altTextRange)
                 }
             }
         }
-        
         private func highlightLinks(in textView: NSTextView, text: String) {
             let linkPattern = "\\[([^\\]]+)\\]\\(([^\\)]+)\\)"
             let regex = try! NSRegularExpression(pattern: linkPattern)
-            
+            let theme = parent.theme
             regex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemBlue, range: match.range)
+                textView.textStorage?.addAttribute(.foregroundColor, value: theme.linkColor, range: match.range)
                 textView.textStorage?.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: match.range)
             }
         }
-        
         private func highlightLists(in textView: NSTextView, text: String) {
             let listPattern = "^(\\s*)([-*+]|\\d+\\.)\\s+"
             let regex = try! NSRegularExpression(pattern: listPattern, options: [.anchorsMatchLines])
-            
+            let theme = parent.theme
             regex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.systemGreen, range: match.range)
+                textView.textStorage?.addAttribute(.foregroundColor, value: theme.listColor, range: match.range)
             }
         }
     }

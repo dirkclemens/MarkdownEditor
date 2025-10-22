@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  MarkdownEditor
-//
-//  Created by Dirk Clemens on 20.10.25.
-//
-
 import SwiftUI
 import os
 
@@ -14,20 +7,23 @@ struct ContentView: View {
     @State private var selectionRange: NSRange? = nil
     @State private var fontSizeInt: Int = 16
     @State private var fontSize: CGFloat = 16
-    
-    @AppStorage("UseDarkTheme") private var useDarkTheme: Bool = false
+    @State private var selectedTheme: String = "Light"
     
     var logger = Logger(subsystem: "de.adcore.Markdown", category: "ContentView")
+    
+    var theme: MarkdownEditorTheme {
+        selectedTheme == "Dark" ? darkTheme : lightTheme
+    }
     
     var body: some View {
         NavigationStack {
             HStack(){
-                MarkdownEditor(text: $document.text, gutterWidth: 30, fontSize: fontSize, onCursorPositionChanged: { pos in
+                MarkdownEditor(text: $document.text, gutterWidth: 30, fontSize: fontSize, separatorWidth: 1.0, theme: theme, onCursorPositionChanged: { pos in
                     DispatchQueue.main.async { cursorPosition = pos }
                 }, onSelectionChanged: { range in
                     DispatchQueue.main.async { selectionRange = range }
                 })
-                .id(fontSize)
+                .id("\(fontSize) - \(selectedTheme)")
                 .padding()
             }
             .toolbar {
@@ -83,6 +79,9 @@ struct ContentView: View {
                     Button("Link", systemImage: "link") {
                         applyMarkdownFormatting(.link)
                     }
+                    Button("Image", systemImage: "photo") {
+                        applyMarkdownFormatting(.link)
+                    }
                 }
                 
                 ToolbarSpacer(.flexible)
@@ -120,18 +119,18 @@ struct ContentView: View {
                         logger.debug("Font size changed to \(fontSize, format: .fixed(precision: 0))")
                     }
                 }
-
-                ToolbarSpacer()
+                
+                ToolbarSpacer(.flexible)
 
                 ToolbarItemGroup() {
-                    // Theme toggle
-                    Button(action: {
-                        useDarkTheme.toggle()
-                    }) {
-                        Image(systemName: useDarkTheme ? "sun.max" : "moon")
+                    Picker("Theme", selection: $selectedTheme) {
+                        Text("Light").tag("Light")
+                        Text("Dark").tag("Dark")
                     }
-                    .help("Toggle theme")
+                    .pickerStyle(MenuPickerStyle())
+                    .frame(width: 60)
                 }
+                
             } // toolbar
         }
     }
