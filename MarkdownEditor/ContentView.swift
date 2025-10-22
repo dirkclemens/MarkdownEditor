@@ -11,8 +11,22 @@ struct ContentView: View {
     
     var logger = Logger(subsystem: "de.adcore.Markdown", category: "ContentView")
     
+    let themes: [String: MarkdownEditorTheme] = [
+        "Light": lightTheme,
+        "Dark": darkTheme,
+        "Monokai": monokaiDarkTheme,
+        "Pastel": pastelTheme,
+        "Solarized Light": solarizedLightTheme,
+        "Solarized Dark": solarizedDarkTheme,
+        "Dracula": draculaTheme,
+        "Gruvbox Dark": gruvboxDarkTheme,
+        "Nord": nordTheme,
+        "One Dark": oneDarkTheme,
+        "Tomorrow Night": tomorrowNightTheme
+    ]
+    
     var theme: MarkdownEditorTheme {
-        selectedTheme == "Dark" ? darkTheme : lightTheme
+        themes[selectedTheme] ?? lightTheme
     }
     
     var body: some View {
@@ -25,6 +39,11 @@ struct ContentView: View {
                 })
                 .id("\(fontSize) - \(selectedTheme)")
                 .padding()
+            }
+            .onAppear {
+                if let savedTheme = UserDefaults.standard.string(forKey: "selectedTheme"), themes.keys.contains(savedTheme) {
+                    selectedTheme = savedTheme
+                }
             }
             .toolbar {
                 ToolbarItemGroup() {
@@ -124,11 +143,16 @@ struct ContentView: View {
 
                 ToolbarItemGroup() {
                     Picker("Theme", selection: $selectedTheme) {
-                        Text("Light").tag("Light")
-                        Text("Dark").tag("Dark")
+                        ForEach(Array(themes.keys), id: \ .self) { name in
+                            Text(name).tag(name)
+                        }
                     }
                     .pickerStyle(MenuPickerStyle())
-                    .frame(width: 60)
+                    .frame(width: 90)
+                    .onChange(of: selectedTheme) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: "selectedTheme")
+                        logger.debug("Theme changed to \(newValue)")
+                    }
                 }
                 
             } // toolbar
