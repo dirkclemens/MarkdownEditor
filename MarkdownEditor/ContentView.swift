@@ -10,14 +10,25 @@ import os
 
 struct ContentView: View {
     @Binding var document: MarkdownEditorDocument
-
+    @State private var cursorPosition: Int? = nil
+    @State private var selectionRange: NSRange? = nil
+    @State private var fontSizeInt: Int = 16
+    @State private var fontSize: CGFloat = 16
+    
+    @AppStorage("UseDarkTheme") private var useDarkTheme: Bool = false
+    
     var logger = Logger(subsystem: "de.adcore.Markdown", category: "ContentView")
     
     var body: some View {
         NavigationStack {
             HStack(){
-                MarkdownEditor(text: $document.text, gutterWidth: 30, fontSize: 16)
-                    .padding()
+                MarkdownEditor(text: $document.text, gutterWidth: 30, fontSize: fontSize, onCursorPositionChanged: { pos in
+                    DispatchQueue.main.async { cursorPosition = pos }
+                }, onSelectionChanged: { range in
+                    DispatchQueue.main.async { selectionRange = range }
+                })
+                .id(fontSize)
+                .padding()
             }
             .toolbar {
                 ToolbarItemGroup() {
@@ -79,50 +90,48 @@ struct ContentView: View {
                 ToolbarItemGroup() {
                     
                     Button("A-", systemImage: "textformat.size.smaller") {
-//                        fontSizeManager.decreaseFontSize()
+                        fontSizeInt = max(8, fontSizeInt - 1)
                     }
                     .keyboardShortcut("-", modifiers: [.command])
                     .help("Decrease font size")
 
                     Button("Aa", systemImage: "textformat.size") {
-//                        fontSizeManager.setFontSize(14) // Reset to default font size
+                        fontSizeInt = 16
                     }
                     .keyboardShortcut("0", modifiers: [.command])
                     .help("Default font size")
 
                     Button("A+", systemImage: "textformat.size.larger") {
-//                        fontSizeManager.increaseFontSize()
+                        fontSizeInt = min(36, fontSizeInt + 1)
                     }
                     .keyboardShortcut("+", modifiers: [.command])
                     .help("Increase font size")
 
-//                    Slider(value: $fontSizeManager.fontSize, in: 8...72) {
-//                        Text("Font Size")
-//                    }.frame(width: 100)
+                    Picker("Font Size", selection: $fontSizeInt) {
+                        ForEach(Array(stride(from: 8, through: 36, by: 2)), id: \.self) { size in
+                            Text("\(size) pt").tag(size)
+                                .foregroundColor(size == fontSizeInt ? .accentColor : .primary)
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                    .frame(width: 60)
+                    .onChange(of: fontSizeInt) { _, newValue in
+                        fontSize = CGFloat(newValue)
+                        logger.debug("Font size changed to \(fontSize, format: .fixed(precision: 0))")
+                    }
                 }
 
-//                ToolbarSpacer()
+                ToolbarSpacer()
 
-//                ToolbarItemGroup() {
-//
-//                    Toggle(.showEditor, systemImage: "square.and.pencil", isOn: $showEditor)
-//                        .keyboardShortcut("e", modifiers: .command)
-//                        .disabled(!showPreview)
-//                        .help("Show/hide editor (⌘E)")
-//
-//                    Toggle(.showPreview, systemImage: "square.text.square", isOn: $showPreview)
-//                        .keyboardShortcut("r", modifiers: .command)
-//                        .disabled(!showEditor)
-//                        .help("Show/hide preview (⌘R)")
-//
-//                    // Theme toggle
-//                    Button(action: {
-//                        useDarkTheme.toggle()
-//                    }) {
-//                        Image(systemName: useDarkTheme ? "sun.max" : "moon")
-//                    }
-//                    .help("Toggle theme")
-//                }
+                ToolbarItemGroup() {
+                    // Theme toggle
+                    Button(action: {
+                        useDarkTheme.toggle()
+                    }) {
+                        Image(systemName: useDarkTheme ? "sun.max" : "moon")
+                    }
+                    .help("Toggle theme")
+                }
             } // toolbar
         }
     }
@@ -166,30 +175,35 @@ extension ContentView {
     }
     
     private func applyMarkdownFormatting(_ formatting: MarkdownFormatting) {
-        // Store the current text to ensure we can detect changes
-        let originalText = document.text
-        
-        logger.debug("Applying formatting: \(document.text.count) characters before formatting - formatting: \(formatting.hashValue)")
-        
-        if let wrapper = formatting.wrapper {
-            let placeholder = "text"
-            let formatted = wrapper + placeholder + wrapper
-            document.text += formatted
-        } else if let prefix = formatting.prefix {
-            if formatting == .codeBlock {
-                document.text += "\n```\ncode\n```\n"
-            } else {
-                document.text += "\n" + prefix + "text"
+        let text = document.text
+        if let range = selectionRange, range.length > 0 {
+            let nsText = text as NSString
+            let selected = nsText.substring(with: range)
+            var replacement = selected
+            if let wrapper = formatting.wrapper {
+                replacement = wrapper + selected + wrapper
+            } else if let prefix = formatting.prefix {
+                replacement = prefix + selected
+            } else if formatting == .link {
+                replacement = "[" + selected + "](https://example.com)"
             }
-        } else if formatting == .link {
-            document.text += "[link text](https://example.com)"
-        }
-        
-        // Force the document to recognize the change
-        if document.text != originalText {
-            // Trigger a UI update by slightly modifying and restoring a property
-            let currentText = document.text
-            document.text = currentText
+            let newText = nsText.replacingCharacters(in: range, with: replacement)
+            document.text = newText
+        } else {
+            let pos = cursorPosition ?? text.count
+            var newText = text
+            if let wrapper = formatting.wrapper {
+                let placeholder = "text"
+                let formatted = wrapper + placeholder + wrapper
+                newText.insert(contentsOf: formatted, at: newText.index(newText.startIndex, offsetBy: pos))
+            } else if let prefix = formatting.prefix {
+                let line = prefix + "text"
+                newText.insert(contentsOf: line, at: newText.index(newText.startIndex, offsetBy: pos))
+            } else if formatting == .link {
+                let link = "[link text](https://example.com)"
+                newText.insert(contentsOf: link, at: newText.index(newText.startIndex, offsetBy: pos))
+            }
+            document.text = newText
         }
     }
 }

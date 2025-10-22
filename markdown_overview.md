@@ -19,6 +19,8 @@ extension View {
 }
 ```  
 
+# t~~ex~~t
+
 ## Horizontal Rule
 ---  
 
@@ -107,4 +109,3 @@ H~2~O
 ## Superscript
 X^2^
 
-# text

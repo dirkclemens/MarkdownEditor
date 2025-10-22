@@ -13,12 +13,16 @@ struct MarkdownEditor: NSViewRepresentable {
     let gutterWidth: CGFloat
     let fontSize: CGFloat
     let separatorWidth: CGFloat
+    var onCursorPositionChanged: ((Int) -> Void)? = nil
+    var onSelectionChanged: ((NSRange) -> Void)? = nil
     
-    init(text: Binding<String>, gutterWidth: CGFloat = 50, fontSize: CGFloat = 14, separatorWidth: CGFloat = 1.0) {
+    init(text: Binding<String>, gutterWidth: CGFloat = 50, fontSize: CGFloat = 14, separatorWidth: CGFloat = 1.0, onCursorPositionChanged: ((Int) -> Void)? = nil, onSelectionChanged: ((NSRange) -> Void)? = nil) {
         self._text = text
         self.gutterWidth = gutterWidth
         self.fontSize = fontSize
         self.separatorWidth = separatorWidth
+        self.onCursorPositionChanged = onCursorPositionChanged
+        self.onSelectionChanged = onSelectionChanged
     }
     
     func makeNSView(context: Context) -> NSView {
@@ -121,16 +125,29 @@ struct MarkdownEditor: NSViewRepresentable {
             applyMarkdownSyntaxHighlighting(to: textView)
         }
         
+        func textViewDidChangeSelection(_ notification: Notification) {
+            if let textView = notification.object as? NSTextView {
+                let pos = textView.selectedRange().location
+                parent.onCursorPositionChanged?(pos)
+                
+                // Notify about the selection change
+                let selectedRange = textView.selectedRange()
+                parent.onSelectionChanged?(NSRange(location: selectedRange.location, length: selectedRange.length))
+            }
+        }
+        
+        func getCursorPosition() -> Int? {
+            return textView?.selectedRange().location
+        }
+        
         func applyMarkdownSyntaxHighlighting(to textView: NSTextView) {
             let text = textView.string
             let range = NSRange(location: 0, length: text.count)
-            
             // Reset formatting
+            let baseFont = NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
+            textView.font = baseFont
             textView.textStorage?.removeAttribute(.foregroundColor, range: range)
             textView.textStorage?.removeAttribute(.font, range: range)
-            
-            // Base font
-            let baseFont = NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
             textView.textStorage?.addAttribute(.font, value: baseFont, range: range)
             textView.textStorage?.addAttribute(.foregroundColor, value: NSColor.textColor, range: range)
             
