@@ -24,9 +24,6 @@ struct MarkdownEditorTheme {
     let imageSymbolColor: NSColor
     let linkColor: NSColor
     let listColor: NSColor
-    let font: NSFont
-    let boldFont: NSFont
-    let italicFont: NSFont
 }
 
 let lightTheme = MarkdownEditorTheme(
@@ -44,10 +41,7 @@ let lightTheme = MarkdownEditorTheme(
     imageColor: NSColor.systemBlue,
     imageSymbolColor: NSColor.systemRed,
     linkColor: NSColor.systemBlue,
-    listColor: NSColor.systemGreen,
-    font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular),
-    boldFont: NSFont.boldSystemFont(ofSize: 14),
-    italicFont: NSFontManager.shared.convert(NSFont.monospacedSystemFont(ofSize: 14, weight: .regular), toHaveTrait: .italicFontMask)
+    listColor: NSColor.systemGreen
 )
 
 let darkTheme = MarkdownEditorTheme(
@@ -72,10 +66,7 @@ let darkTheme = MarkdownEditorTheme(
     imageColor: NSColor(calibratedRed: 0.20, green: 0.60, blue: 0.86, alpha: 1), // cyan
     imageSymbolColor: NSColor.systemRed,
     linkColor: NSColor(calibratedRed: 0.27, green: 0.44, blue: 0.78, alpha: 1), // blue
-    listColor: NSColor.systemGreen,
-    font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular),
-    boldFont: NSFont.boldSystemFont(ofSize: 14),
-    italicFont: NSFontManager.shared.convert(NSFont.monospacedSystemFont(ofSize: 14, weight: .regular), toHaveTrait: .italicFontMask)
+    listColor: NSColor.systemGreen
 )
 
 struct MarkdownEditor: NSViewRepresentable {
@@ -257,7 +248,7 @@ struct MarkdownEditor: NSViewRepresentable {
             let theme = parent.theme
             regex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                let boldFont = theme.boldFont
+                let boldFont = NSFont.boldSystemFont(ofSize: parent.fontSize)
                 textView.textStorage?.addAttribute(.font, value: boldFont, range: match.range)
                 textView.textStorage?.addAttribute(.foregroundColor, value: theme.boldColor, range: match.range)
             }
@@ -268,7 +259,7 @@ struct MarkdownEditor: NSViewRepresentable {
             let theme = parent.theme
             regex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                let italicFont = theme.italicFont
+                let italicFont = NSFontManager.shared.convert(NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular), toHaveTrait: .italicFontMask)
                 textView.textStorage?.addAttribute(.font, value: italicFont, range: match.range)
                 textView.textStorage?.addAttribute(.foregroundColor, value: theme.italicColor, range: match.range)
             }
@@ -289,7 +280,7 @@ struct MarkdownEditor: NSViewRepresentable {
             let inlineRegex = try! NSRegularExpression(pattern: inlineCodePattern)
             inlineRegex.enumerateMatches(in: text, range: NSRange(location: 0, length: text.count)) { match, _, _ in
                 guard let match = match else { return }
-                let codeFont = theme.font
+                let codeFont = NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
                 textView.textStorage?.addAttribute(.font, value: codeFont, range: match.range)
                 textView.textStorage?.addAttribute(.foregroundColor, value: theme.codeColor, range: match.range)
                 textView.textStorage?.addAttribute(.backgroundColor, value: theme.codeBackgroundColor, range: match.range)
@@ -308,7 +299,7 @@ struct MarkdownEditor: NSViewRepresentable {
                         inCodeBlock = false
                         let lineEnd = lineStart + line.count
                         let codeBlockRange = NSRange(location: codeBlockStart, length: lineEnd - codeBlockStart)
-                        let codeFont = theme.font
+                        let codeFont = NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
                         textView.textStorage?.addAttribute(.font, value: codeFont, range: codeBlockRange)
                         textView.textStorage?.addAttribute(.foregroundColor, value: theme.codeColor, range: codeBlockRange)
                         textView.textStorage?.addAttribute(.backgroundColor, value: theme.codeBackgroundColor, range: codeBlockRange)
@@ -327,7 +318,7 @@ struct MarkdownEditor: NSViewRepresentable {
                 textView.textStorage?.addAttribute(.foregroundColor, value: theme.blockquoteColor, range: match.range)
                 let symbolRange = match.range(at: 1)
                 textView.textStorage?.addAttribute(.foregroundColor, value: theme.blockquoteSymbolColor, range: symbolRange)
-                textView.textStorage?.addAttribute(.font, value: theme.boldFont, range: symbolRange)
+                textView.textStorage?.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: parent.fontSize), range: symbolRange)
             }
         }
         private func highlightTables(in textView: NSTextView, text: String) {
@@ -343,7 +334,7 @@ struct MarkdownEditor: NSViewRepresentable {
                     let separatorRegex = try! NSRegularExpression(pattern: separatorPattern)
                     if separatorRegex.firstMatch(in: line, range: NSRange(location: 0, length: line.count)) != nil {
                         textView.textStorage?.addAttribute(.foregroundColor, value: theme.tableColor, range: lineRange)
-                        textView.textStorage?.addAttribute(.font, value: theme.boldFont, range: lineRange)
+                        textView.textStorage?.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: parent.fontSize), range: lineRange)
                     } else {
                         let pipePattern = "\\|"
                         let pipeRegex = try! NSRegularExpression(pattern: pipePattern)
@@ -351,12 +342,12 @@ struct MarkdownEditor: NSViewRepresentable {
                             guard let match = match else { return }
                             let globalRange = NSRange(location: lineStart + match.range.location, length: match.range.length)
                             textView.textStorage?.addAttribute(.foregroundColor, value: theme.tableColor, range: globalRange)
-                            textView.textStorage?.addAttribute(.font, value: theme.boldFont, range: globalRange)
+                            textView.textStorage?.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: parent.fontSize), range: globalRange)
                         }
                         let isHeader = (index > 0 && lines[index - 1].range(of: "[-:]", options: .regularExpression) != nil) ||
                                       (index < lines.count - 1 && lines[index + 1].range(of: "[-:]", options: .regularExpression) != nil)
                         if isHeader {
-                            textView.textStorage?.addAttribute(.font, value: theme.boldFont, range: lineRange)
+                            textView.textStorage?.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: parent.fontSize), range: lineRange)
                         }
                     }
                 }
@@ -373,10 +364,10 @@ struct MarkdownEditor: NSViewRepresentable {
                 textView.textStorage?.addAttribute(.foregroundColor, value: theme.imageColor, range: match.range)
                 let exclamationRange = NSRange(location: match.range.location, length: 1)
                 textView.textStorage?.addAttribute(.foregroundColor, value: theme.imageSymbolColor, range: exclamationRange)
-                textView.textStorage?.addAttribute(.font, value: theme.boldFont, range: exclamationRange)
+                textView.textStorage?.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: parent.fontSize), range: exclamationRange)
                 let altTextRange = match.range(at: 1)
                 if altTextRange.length > 0 {
-                    textView.textStorage?.addAttribute(.font, value: theme.italicFont, range: altTextRange)
+                    textView.textStorage?.addAttribute(.font, value: NSFontManager.shared.convert(NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular), toHaveTrait: .italicFontMask), range: altTextRange)
                 }
             }
         }
