@@ -12,16 +12,16 @@ struct ContentView: View {
     var logger = Logger(subsystem: "de.adcore.Markdown", category: "ContentView")
     
     let themes: [String: MarkdownEditorTheme] = [
-        "Light": lightTheme,
         "Dark": darkTheme,
-        "Monokai": monokaiDarkTheme,
-        "Pastel": pastelTheme,
-        "Solarized Light": solarizedLightTheme,
-        "Solarized Dark": solarizedDarkTheme,
         "Dracula": draculaTheme,
         "Gruvbox Dark": gruvboxDarkTheme,
+        "Light": lightTheme,
+        "Monokai": monokaiDarkTheme,
         "Nord": nordTheme,
         "One Dark": oneDarkTheme,
+        "Pastel": pastelTheme,
+        "Solarized Dark": solarizedDarkTheme,
+        "Solarized Light": solarizedLightTheme,
         "Tomorrow Night": tomorrowNightTheme
     ]
     
@@ -32,7 +32,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             HStack(){
-                MarkdownEditor(text: $document.text, gutterWidth: 30, fontSize: fontSize, separatorWidth: 1.0, theme: theme, onCursorPositionChanged: { pos in
+                MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: fontSize, separatorWidth: 1.0, theme: theme, onCursorPositionChanged: { pos in
                     DispatchQueue.main.async { cursorPosition = pos }
                 }, onSelectionChanged: { range in
                     DispatchQueue.main.async { selectionRange = range }
@@ -99,7 +99,7 @@ struct ContentView: View {
                         applyMarkdownFormatting(.link)
                     }
                     Button("Image", systemImage: "photo") {
-                        applyMarkdownFormatting(.link)
+                        applyMarkdownFormatting(.image)
                     }
                 }
                 
@@ -148,7 +148,7 @@ struct ContentView: View {
                         }
                     }
                     .pickerStyle(MenuPickerStyle())
-                    .frame(width: 90)
+                    .frame(width: 120)
                     .onChange(of: selectedTheme) { _, newValue in
                         UserDefaults.standard.set(newValue, forKey: "selectedTheme")
                         logger.debug("Theme changed to \(newValue)")
@@ -169,7 +169,7 @@ extension ContentView {
     enum MarkdownFormatting {
         case italic, bold, strikethrough, inlineCode, codeBlock
         case header1, header2, header3, header4, header5, header6
-        case unorderedList, orderedList, link
+        case unorderedList, orderedList, link, image
         
         var wrapper: String? {
             switch self {
@@ -208,7 +208,9 @@ extension ContentView {
             } else if let prefix = formatting.prefix {
                 replacement = prefix + selected
             } else if formatting == .link {
-                replacement = "[" + selected + "](https://example.com)"
+                replacement = "[link text: " + selected + "](" + selected + ")"
+            } else if formatting == .image {
+                replacement = "![alt text: " + selected + "](" + selected + ")"
             }
             let newText = nsText.replacingCharacters(in: range, with: replacement)
             document.text = newText
@@ -225,6 +227,9 @@ extension ContentView {
             } else if formatting == .link {
                 let link = "[link text](https://example.com)"
                 newText.insert(contentsOf: link, at: newText.index(newText.startIndex, offsetBy: pos))
+            } else if formatting == .image {
+                let image = "![alt text](./logo.png)"
+                newText.insert(contentsOf: image, at: newText.index(newText.startIndex, offsetBy: pos))
             }
             document.text = newText
         }

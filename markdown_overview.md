@@ -17,14 +17,20 @@ extension View {
         }
     }
 }
-```  
+``` 
+
+![alt text](./logo.png)
+
+screenshot.jpg
 
 # t~~ex~~t
 
 ## Horizontal Rule
 ---  
 
-# H1	*Heading*
+# Headings
+
+# H1 
 ## H2
 ### H3
 #### H4
