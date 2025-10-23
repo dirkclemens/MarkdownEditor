@@ -1,3 +1,10 @@
+//
+//  ContentView.swift
+//  MarkdownEditor
+//
+//  Created by Dirk Clemens on 20.10.25.
+//
+
 import SwiftUI
 import os
 
@@ -8,6 +15,7 @@ struct ContentView: View {
     @State private var fontSizeInt: Int = 16
     @State private var fontSize: CGFloat = 16
     @State private var selectedTheme: String = "Light"
+    @State private var showPreview: Bool = false
     
     var logger = Logger(subsystem: "de.adcore.Markdown", category: "ContentView")
     
@@ -32,13 +40,18 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             HStack(){
-                MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: fontSize, separatorWidth: 1.0, theme: theme, onCursorPositionChanged: { pos in
-                    DispatchQueue.main.async { cursorPosition = pos }
-                }, onSelectionChanged: { range in
-                    DispatchQueue.main.async { selectionRange = range }
-                })
-                .id("\(fontSize) - \(selectedTheme)")
-                .padding()
+                if showPreview {
+                    MarkdownRenderer(markdown: document.text)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: fontSize, separatorWidth: 1.0, theme: theme, onCursorPositionChanged: { pos in
+                        DispatchQueue.main.async { cursorPosition = pos }
+                    }, onSelectionChanged: { range in
+                        DispatchQueue.main.async { selectionRange = range }
+                    })
+                    .id("\(fontSize) - \(selectedTheme)")
+                    .padding()
+                }
             }
             .onAppear {
                 if let savedTheme = UserDefaults.standard.string(forKey: "selectedTheme"), themes.keys.contains(savedTheme) {
@@ -46,6 +59,13 @@ struct ContentView: View {
                 }
             }
             .toolbar {
+                ToolbarItemGroup() {
+                    Button(showPreview ? "Edit" : "Preview", systemImage: showPreview ? "pencil" : "eye") {
+                        showPreview.toggle()
+                    }
+                    .help(showPreview ? "Switch to editor" : "Show Markdown preview")
+                }
+                
                 ToolbarItemGroup() {
                     Button("italic", systemImage: "italic") {
                         applyMarkdownFormatting(.italic)
