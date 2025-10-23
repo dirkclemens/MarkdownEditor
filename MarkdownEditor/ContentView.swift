@@ -16,6 +16,9 @@ struct ContentView: View {
     @State private var fontSize: CGFloat = 16
     @State private var selectedTheme: String = "Light"
     @State private var showPreview: Bool = false
+    @State private var showImagePicker: Bool = false
+    @State private var showTablePicker: Bool = false
+    @State private var selectedHeader: Int = 1
     
     var logger = Logger(subsystem: "de.adcore.Markdown", category: "ContentView")
     
@@ -66,6 +69,21 @@ struct ContentView: View {
                     .help(showPreview ? "Switch to editor" : "Show Markdown preview")
                 }
                 
+                ToolbarSpacer(.flexible)
+
+                ToolbarItemGroup() {
+                    Button("Undo", systemImage: "arrow.uturn.backward") {
+                        NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
+                    }
+                    .help("Undo last action")
+                    Button("Redo", systemImage: "arrow.uturn.forward") {
+                        NSApp.sendAction(Selector(("redo:")), to: nil, from: nil)
+                    }
+                    .help("Redo last action")
+                }
+                
+                ToolbarSpacer(.flexible)
+                
                 ToolbarItemGroup() {
                     Button("italic", systemImage: "italic") {
                         applyMarkdownFormatting(.italic)
@@ -82,45 +100,53 @@ struct ContentView: View {
                     Button("Strike", systemImage: "strikethrough") {
                         applyMarkdownFormatting(.strikethrough)
                     }
+                    .help("Strikethrough text")
                 }
                 
                 ToolbarItemGroup() {
-                    Button("H1") {
-                        applyMarkdownFormatting(.header1)
+                    Picker("Heading", selection: $selectedHeader) {
+                        ForEach(1...6, id: \ .self) { level in
+                            Text("H\(level)").tag(level)
+                        }
                     }
-                    Button("H2") {
-                        applyMarkdownFormatting(.header2)
+                    .help("Insert Markdown heading")
+                    .pickerStyle(MenuPickerStyle())
+                    .frame(width: 60)
+                    .onChange(of: selectedHeader) { _, newValue in
+                        switch newValue {
+                        case 1: applyMarkdownFormatting(.header1)
+                        case 2: applyMarkdownFormatting(.header2)
+                        case 3: applyMarkdownFormatting(.header3)
+                        case 4: applyMarkdownFormatting(.header4)
+                        case 5: applyMarkdownFormatting(.header5)
+                        case 6: applyMarkdownFormatting(.header6)
+                        default: break
+                        }
                     }
-                    Button("H3") {
-                        applyMarkdownFormatting(.header3)
-                    }
-                    Button("H4") {
-                        applyMarkdownFormatting(.header4)
-                    }
-                    Button("H5") {
-                        applyMarkdownFormatting(.header5)
-                    }
-                }
-                
-                ToolbarItemGroup() {
                     Button("Code", systemImage: "chevron.left.forwardslash.chevron.right") {
                         applyMarkdownFormatting(.inlineCode)
-                    }
+                    } .help("Inline code")
                     Button("Block", systemImage: "curlybraces") {
                         applyMarkdownFormatting(.codeBlock)
-                    }
+                    } .help("Code block")
                     Button("List", systemImage: "list.bullet") {
                         applyMarkdownFormatting(.unorderedList)
-                    }
+                    } .help("Unordered list")
                     Button("Numbers", systemImage: "list.number") {
                         applyMarkdownFormatting(.orderedList)
-                    }
+                    } .help("Ordered list")
                     Button("Link", systemImage: "link") {
                         applyMarkdownFormatting(.link)
-                    }
+                    } .help("Insert link")
                     Button("Image", systemImage: "photo") {
                         applyMarkdownFormatting(.image)
-                    }
+                    } .help("Insert image")
+                    Button("Image Picker", systemImage: "photo.on.rectangle") {
+                        showImagePicker = true
+                    } .help("Insert emoji icon")
+                    Button("Table Picker", systemImage: "tablecells") {
+                        showTablePicker = true
+                    } .help("Insert Markdown table")
                 }
                 
                 ToolbarSpacer(.flexible)
@@ -132,25 +158,23 @@ struct ContentView: View {
                     }
                     .keyboardShortcut("-", modifiers: [.command])
                     .help("Decrease font size")
-
                     Button("Aa", systemImage: "textformat.size") {
                         fontSizeInt = 16
                     }
                     .keyboardShortcut("0", modifiers: [.command])
                     .help("Default font size")
-
                     Button("A+", systemImage: "textformat.size.larger") {
                         fontSizeInt = min(36, fontSizeInt + 1)
                     }
                     .keyboardShortcut("+", modifiers: [.command])
                     .help("Increase font size")
-
                     Picker("Font Size", selection: $fontSizeInt) {
                         ForEach(Array(stride(from: 8, through: 36, by: 2)), id: \.self) { size in
                             Text("\(size) pt").tag(size)
                                 .foregroundColor(size == fontSizeInt ? .accentColor : .primary)
                         }
                     }
+                    .help("Select font size")
                     .pickerStyle(MenuPickerStyle())
                     .frame(width: 60)
                     .onChange(of: fontSizeInt) { _, newValue in
@@ -163,10 +187,11 @@ struct ContentView: View {
 
                 ToolbarItemGroup() {
                     Picker("Theme", selection: $selectedTheme) {
-                        ForEach(Array(themes.keys), id: \ .self) { name in
+                        ForEach(Array(themes.keys).sorted(), id: \ .self) { name in
                             Text(name).tag(name)
                         }
                     }
+                    .help("Select editor theme")
                     .pickerStyle(MenuPickerStyle())
                     .frame(width: 120)
                     .onChange(of: selectedTheme) { _, newValue in
@@ -174,8 +199,27 @@ struct ContentView: View {
                         logger.debug("Theme changed to \(newValue)")
                     }
                 }
-                
             } // toolbar
+        }
+        .sheet(isPresented: $showImagePicker) {
+            ImagePickerSheet { emoji in
+                let pos = cursorPosition ?? document.text.count
+                document.text.insert(contentsOf: emoji, at: document.text.index(document.text.startIndex, offsetBy: pos))
+                logger.debug("Inserted emoji/image: \(emoji), at position: \(pos)")
+                showImagePicker = false
+            }
+        }
+        .sheet(isPresented: $showTablePicker) {
+            TableSelectorSheet { columns, rows in
+                let header = (0..<columns).map { "Header\($0+1)" }.joined(separator: " | ")
+                let separator = Array(repeating: " :--- ", count: columns).joined(separator: " | ")
+                let body = (0..<rows-1).map { _ in Array(repeating: "Cell", count: columns).joined(separator: " | ") }.joined(separator: "\n")
+                let markdownTable = "| " + header + " |\n| " + separator + " |\n" + (body.isEmpty ? "" : "| " + body + " |\n")
+                let pos = cursorPosition ?? document.text.count
+                document.text.insert(contentsOf: markdownTable, at: document.text.index(document.text.startIndex, offsetBy: pos))
+                logger.debug("Inserted Markdown table: \(columns)x\(rows) at position: \(pos)")
+                showTablePicker = false
+            }
         }
     }
 }

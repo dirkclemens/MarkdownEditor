@@ -19,22 +19,9 @@
 		43C8D0E62EA694BD006C5AC5 /* MarkdownEditor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarkdownEditor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		43C8D0F22EA694BF006C5AC5 /* Exceptions for "MarkdownEditor" folder in "MarkdownEditor" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 43C8D0E52EA694BD006C5AC5 /* MarkdownEditor */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		43C8D0E82EA694BD006C5AC5 /* MarkdownEditor */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				43C8D0F22EA694BF006C5AC5 /* Exceptions for "MarkdownEditor" folder in "MarkdownEditor" target */,
-			);
 			path = MarkdownEditor;
 			sourceTree = "<group>";
 		};
