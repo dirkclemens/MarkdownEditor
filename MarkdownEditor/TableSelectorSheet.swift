@@ -1,17 +1,18 @@
 import SwiftUI
 
 struct TableSelectorSheet: View {
-    let maxColumns = 5
-    let maxRows = 6
+    let maxColumns = 6
+    let maxRows = 8
     @State private var selectedColumns: Int = 0
     @State private var selectedRows: Int = 0
     @State private var hoveredCell: (col: Int, row: Int)? = nil
     var onSelect: (Int, Int) -> Void
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 8) {
             Text("Select table size")
                 .font(.headline)
+                .padding(.top, 8)
             Grid(horizontalSpacing: 4, verticalSpacing: 4) {
                 ForEach(0..<maxRows, id: \ .self) { row in
                     GridRow {
@@ -46,9 +47,9 @@ struct TableSelectorSheet: View {
                 }
             }
             .padding()
-            Text("\(selectedColumns+1) x \(selectedRows+1) table")
-                .font(.subheadline)
         }
+        .background(Color(NSColor.windowBackgroundColor))
         .frame(minWidth: 250, minHeight: 250)
+        .frame(maxWidth: 320, maxHeight: 360)
     }
 }

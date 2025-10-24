@@ -11,7 +11,7 @@ import AppKit
 struct MarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     let gutterWidth: CGFloat
-    let fontSize: CGFloat
+    var fontSize: CGFloat
     let separatorWidth: CGFloat
     let theme: MarkdownEditorTheme
     var onCursorPositionChanged: ((Int) -> Void)? = nil
@@ -95,7 +95,10 @@ struct MarkdownEditor: NSViewRepresentable {
     }
     
     func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.parent = self // keep coordinator in sync!
         guard let textView = context.coordinator.textView else { return }
+        //print("[updateNSView] Setting font size to", fontSize)
+        textView.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         textView.backgroundColor = theme.backgroundColor
         textView.textColor = theme.textColor
         if textView.string != text {
@@ -103,6 +106,10 @@ struct MarkdownEditor: NSViewRepresentable {
             context.coordinator.updateLineNumbers()
         }
         context.coordinator.applyMarkdownSyntaxHighlighting(to: textView)
+        textView.setNeedsDisplay(textView.bounds)
+        if let textContainer = textView.textContainer {
+            textView.layoutManager?.ensureLayout(for: textContainer)
+        }
     }
     
     func makeCoordinator() -> Coordinator {
@@ -110,7 +117,7 @@ struct MarkdownEditor: NSViewRepresentable {
     }
     
     class Coordinator: NSObject, NSTextViewDelegate {
-        let parent: MarkdownEditor
+        var parent: MarkdownEditor
         var textView: NSTextView?
         var lineNumberView: LineNumberView?
         var scrollView: NSScrollView?
@@ -148,7 +155,8 @@ struct MarkdownEditor: NSViewRepresentable {
             let text = textView.string
             let range = NSRange(location: 0, length: text.count)
             let baseFont = NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
-            textView.font = baseFont
+            //print("[applyMarkdownSyntaxHighlighting] Using font size", parent.fontSize)
+            // Remove all font and color attributes before applying new ones
             textView.textStorage?.removeAttribute(.foregroundColor, range: range)
             textView.textStorage?.removeAttribute(.font, range: range)
             textView.textStorage?.addAttribute(.font, value: baseFont, range: range)

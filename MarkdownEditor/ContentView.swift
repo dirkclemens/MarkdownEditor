@@ -12,13 +12,14 @@ struct ContentView: View {
     @Binding var document: MarkdownEditorDocument
     @State private var cursorPosition: Int? = nil
     @State private var selectionRange: NSRange? = nil
-    @State private var fontSizeInt: Int = 16
     @State private var fontSize: CGFloat = 16
     @State private var selectedTheme: String = "Light"
     @State private var showPreview: Bool = false
     @State private var showImagePicker: Bool = false
     @State private var showTablePicker: Bool = false
     @State private var selectedHeader: Int = 1
+    
+    @AppStorage("FontSize") private var fontSizeInt: Int = 16
     
     var logger = Logger(subsystem: "de.adcore.Markdown", category: "ContentView")
     
@@ -135,13 +136,16 @@ struct ContentView: View {
                     Button("Numbers", systemImage: "list.number") {
                         applyMarkdownFormatting(.orderedList)
                     } .help("Ordered list")
+                    Button("Checklist", systemImage: "checklist") {
+                        applyMarkdownFormatting(.checkList)
+                    } .help("Checklist")                    
                     Button("Link", systemImage: "link") {
                         applyMarkdownFormatting(.link)
                     } .help("Insert link")
                     Button("Image", systemImage: "photo") {
                         applyMarkdownFormatting(.image)
                     } .help("Insert image")
-                    Button("Image Picker", systemImage: "photo.on.rectangle") {
+                    Button("Image Picker", systemImage: "face.smiling") {
                         showImagePicker = true
                     } .help("Insert emoji icon")
                     Button("Table Picker", systemImage: "tablecells") {
@@ -154,7 +158,7 @@ struct ContentView: View {
                 ToolbarItemGroup() {
                     
                     Button("A-", systemImage: "textformat.size.smaller") {
-                        fontSizeInt = max(8, fontSizeInt - 1)
+                        fontSizeInt = max(8, fontSizeInt - 2)
                     }
                     .keyboardShortcut("-", modifiers: [.command])
                     .help("Decrease font size")
@@ -164,7 +168,7 @@ struct ContentView: View {
                     .keyboardShortcut("0", modifiers: [.command])
                     .help("Default font size")
                     Button("A+", systemImage: "textformat.size.larger") {
-                        fontSizeInt = min(36, fontSizeInt + 1)
+                        fontSizeInt = min(36, fontSizeInt + 2)
                     }
                     .keyboardShortcut("+", modifiers: [.command])
                     .help("Increase font size")
@@ -213,8 +217,8 @@ struct ContentView: View {
             TableSelectorSheet { columns, rows in
                 let header = (0..<columns).map { "Header\($0+1)" }.joined(separator: " | ")
                 let separator = Array(repeating: " :--- ", count: columns).joined(separator: " | ")
-                let body = (0..<rows-1).map { _ in Array(repeating: "Cell", count: columns).joined(separator: " | ") }.joined(separator: "\n")
-                let markdownTable = "| " + header + " |\n| " + separator + " |\n" + (body.isEmpty ? "" : "| " + body + " |\n")
+                let body = (0..<rows-1).map { _ in "| " + Array(repeating: "Cell", count: columns).joined(separator: " | ") + " |" }.joined(separator: "\n")
+                let markdownTable = "| " + header + " |\n| " + separator + " |\n" + (body.isEmpty ? "" : body + "\n")
                 let pos = cursorPosition ?? document.text.count
                 document.text.insert(contentsOf: markdownTable, at: document.text.index(document.text.startIndex, offsetBy: pos))
                 logger.debug("Inserted Markdown table: \(columns)x\(rows) at position: \(pos)")
@@ -233,7 +237,7 @@ extension ContentView {
     enum MarkdownFormatting {
         case italic, bold, strikethrough, inlineCode, codeBlock
         case header1, header2, header3, header4, header5, header6
-        case unorderedList, orderedList, link, image
+        case unorderedList, orderedList, checkList, link, image
         
         var wrapper: String? {
             switch self {
@@ -255,6 +259,7 @@ extension ContentView {
             case .header6: return "###### "
             case .unorderedList: return "- "
             case .orderedList: return "1. "
+            case .checkList: return "- [ ] "
             case .codeBlock: return "```"
             default: return nil
             }

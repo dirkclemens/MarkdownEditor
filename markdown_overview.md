@@ -19,12 +19,6 @@ extension View {
 }
 ``` 
 
-![alt text](./logo.png)
-
-screenshot.jpg
-
-# t~~ex~~t
-
 ## Horizontal Rule
 ---  
 
