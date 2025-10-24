@@ -11,6 +11,7 @@
 		431A51CC2EA6978B002EC43E /* markdown-cheat-sheet.md in Resources */ = {isa = PBXBuildFile; fileRef = 431A51CB2EA6978B002EC43E /* markdown-cheat-sheet.md */; };
 		431A51CD2EA6978B002EC43E /* markdown_overview.md in Resources */ = {isa = PBXBuildFile; fileRef = 431A51CA2EA6978B002EC43E /* markdown_overview.md */; };
 		43604FEC2EABCCF400D28155 /* .gitignore in Sources */ = {isa = PBXBuildFile; fileRef = 43604FEB2EABCCED00D28155 /* .gitignore */; };
+		43604FEE2EABCE8700D28155 /* Readme.md in Resources */ = {isa = PBXBuildFile; fileRef = 43604FED2EABCE8700D28155 /* Readme.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +19,7 @@
 		431A51CA2EA6978B002EC43E /* markdown_overview.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = markdown_overview.md; sourceTree = "<group>"; };
 		431A51CB2EA6978B002EC43E /* markdown-cheat-sheet.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "markdown-cheat-sheet.md"; sourceTree = "<group>"; };
 		43604FEB2EABCCED00D28155 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = .gitignore; sourceTree = "<group>"; };
+		43604FED2EABCE8700D28155 /* Readme.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Readme.md; sourceTree = "<group>"; };
 		43C8D0E62EA694BD006C5AC5 /* MarkdownEditor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarkdownEditor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -43,6 +45,7 @@
 		43C8D0DD2EA694BD006C5AC5 = {
 			isa = PBXGroup;
 			children = (
+				43604FED2EABCE8700D28155 /* Readme.md */,
 				43604FEB2EABCCED00D28155 /* .gitignore */,
 				431A51CA2EA6978B002EC43E /* markdown_overview.md */,
 				431A51CB2EA6978B002EC43E /* markdown-cheat-sheet.md */,
@@ -126,6 +129,7 @@
 			files = (
 				431A51CC2EA6978B002EC43E /* markdown-cheat-sheet.md in Resources */,
 				431A51CD2EA6978B002EC43E /* markdown_overview.md in Resources */,
+				43604FEE2EABCE8700D28155 /* Readme.md in Resources */,
 				431A51C92EA69631002EC43E /* Markdown.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
