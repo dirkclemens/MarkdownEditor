@@ -10,20 +10,26 @@ import SwiftUI
 struct MarkdownRenderer: View {
 
     let markdown: String
+    @State private var attributed: AttributedString = AttributedString("")
+    @State private var lastMarkdownHash: Int = 0
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                parseAndRender()
+                renderAttributed()
             }
             .padding()
+        }
+        .onAppear {
+            updateAttributed(from: markdown)
+        }
+        .onChange(of: markdown) { _, newValue in
+            updateAttributed(from: newValue)
         }
     }
     
     @ViewBuilder
-    func parseAndRender() -> some View {
-        let attributed = try! AttributedString(markdown: markdown)
-        
+    func renderAttributed() -> some View {
         ForEach(Array(attributed.runs.enumerated()), id: \.offset) { index, run in
             let text = String(attributed[run.range].characters)
             
@@ -44,6 +50,17 @@ struct MarkdownRenderer: View {
                 Text(text)
             }
         }
+    }
+
+    private func updateAttributed(from text: String) {
+        let hash = text.hashValue
+        if hash == lastMarkdownHash { return }
+        if let parsed = try? AttributedString(markdown: text) {
+            attributed = parsed
+        } else {
+            attributed = AttributedString(text)
+        }
+        lastMarkdownHash = hash
     }
     
     @ViewBuilder

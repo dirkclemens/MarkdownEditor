@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 import os
 
 struct ContentView: View {
@@ -53,7 +54,6 @@ struct ContentView: View {
                     }, onSelectionChanged: { range in
                         DispatchQueue.main.async { selectionRange = range }
                     })
-                    .id("\(fontSize) - \(selectedTheme)")
                     .padding()
                 }
             }
@@ -205,6 +205,7 @@ struct ContentView: View {
                 }
             } // toolbar
         }
+        .background(WindowFrameSaver(windowKey: "MarkdownEditorMainWindow"))
         .sheet(isPresented: $showImagePicker) {
             ImagePickerSheet { emoji in
                 let pos = cursorPosition ?? document.text.count
@@ -230,6 +231,31 @@ struct ContentView: View {
 
 #Preview {
     ContentView(document: .constant(MarkdownEditorDocument()))
+}
+
+private struct WindowFrameSaver: NSViewRepresentable {
+    let windowKey: String
+    
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { [weak view] in
+            guard let window = view?.window else { return }
+            if !window.setFrameAutosaveName(windowKey) {
+                window.setFrameAutosaveName(windowKey)
+            }
+            window.setFrameUsingName(windowKey)
+        }
+        return view
+    }
+    
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { [weak nsView] in
+            guard let window = nsView?.window else { return }
+            if !window.setFrameAutosaveName(windowKey) {
+                window.setFrameAutosaveName(windowKey)
+            }
+        }
+    }
 }
 
 extension ContentView {
@@ -267,6 +293,11 @@ extension ContentView {
     }
     
     private func applyMarkdownFormatting(_ formatting: MarkdownFormatting) {
+        if let textView = NSApp.keyWindow?.firstResponder as? NSTextView {
+            applyFormatting(using: textView, formatting: formatting)
+            return
+        }
+        
         let text = document.text
         if let range = selectionRange, range.length > 0 {
             let nsText = text as NSString
@@ -301,6 +332,41 @@ extension ContentView {
                 newText.insert(contentsOf: image, at: newText.index(newText.startIndex, offsetBy: pos))
             }
             document.text = newText
+        }
+    }
+
+    private func applyFormatting(using textView: NSTextView, formatting: MarkdownFormatting) {
+        let nsText = textView.string as NSString
+        let selectedRange = textView.selectedRange()
+        let hasSelection = selectedRange.length > 0
+        let selected = hasSelection ? nsText.substring(with: selectedRange) : ""
+        var replacement = selected
+        
+        if let wrapper = formatting.wrapper {
+            if hasSelection {
+                replacement = wrapper + selected + wrapper
+            } else {
+                replacement = wrapper + "text" + wrapper
+            }
+        } else if let prefix = formatting.prefix {
+            if hasSelection {
+                replacement = prefix + selected
+            } else {
+                replacement = prefix + "text"
+            }
+        } else if formatting == .link {
+            replacement = hasSelection ? "[link text: " + selected + "](" + selected + ")" : "[link text](https://example.com)"
+        } else if formatting == .image {
+            replacement = hasSelection ? "![alt text: " + selected + "](" + selected + ")" : "![alt text](./logo.png)"
+        }
+        
+        let range = hasSelection ? selectedRange : NSRange(location: selectedRange.location, length: 0)
+        if textView.shouldChangeText(in: range, replacementString: replacement) {
+            textView.textStorage?.replaceCharacters(in: range, with: replacement)
+            textView.didChangeText()
+            let replacementLength = (replacement as NSString).length
+            textView.setSelectedRange(NSRange(location: range.location + replacementLength, length: 0))
+            document.text = textView.string
         }
     }
 }
