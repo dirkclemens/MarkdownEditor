@@ -11,7 +11,11 @@ import os
 
 struct ContentView: View {
     @Binding var document: MarkdownEditorDocument
-    @State private var showPreview: Bool = false
+    var fileURL: URL? = nil
+    /// Ansicht pro Fenster: Editor, Editor und Vorschau nebeneinander oder nur Vorschau.
+    @SceneStorage("ViewMode") private var viewMode: ViewMode = .editor
+    /// Anteil des Editors an der Fensterbreite in der geteilten Ansicht.
+    @AppStorage("SplitFraction") private var splitFraction: Double = 0.5
     @State private var showImagePicker: Bool = false
     @State private var showTablePicker: Bool = false
     @State private var editorTextView: NSTextView?
@@ -41,22 +45,38 @@ struct ContentView: View {
     
     var body: some View {
         NavigationStack {
-            HStack(){
-                if showPreview {
-                    MarkdownRenderer(markdown: document.text)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: CGFloat(fontSizeInt), separatorWidth: 1.0, theme: theme, onTextViewReady: { textView in
-                        DispatchQueue.main.async { editorTextView = textView }
-                    })
+            GeometryReader { proxy in
+                // Jede Ansicht steht in einem eigenen `if`: Der Editor bleibt beim Wechsel
+                // zwischen Editor und geteilter Ansicht erhalten (Cursor, Scrollposition),
+                // die Vorschau beim Wechsel zwischen geteilter Ansicht und Vorschau.
+                HStack(spacing: 0) {
+                    if viewMode != .preview {
+                        editor
+                            .frame(width: viewMode == .split ? editorWidth(in: proxy.size.width) : nil)
+                    }
+                    if viewMode == .split {
+                        PaneDivider(fraction: $splitFraction,
+                                    totalWidth: proxy.size.width - PaneDivider.width,
+                                    minPaneWidth: Self.minPaneWidth)
+                    }
+                    if viewMode != .editor {
+                        preview
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
             }
             .toolbar {
                 ToolbarItemGroup() {
-                    Button(showPreview ? "Edit" : "Preview", systemImage: showPreview ? "pencil" : "eye") {
-                        showPreview.toggle()
+                    Picker("View", selection: $viewMode) {
+                        ForEach(ViewMode.allCases) { mode in
+                            Label(mode.title, systemImage: mode.systemImage)
+                                .labelStyle(.iconOnly)
+                                .help(mode.help)
+                                .tag(mode)
+                        }
                     }
-                    .help(showPreview ? "Switch to editor" : "Show Markdown preview")
+                    .pickerStyle(.segmented)
+                    .help("Editor, editor and preview side by side, or preview")
                 }
                 
                 ToolbarSpacer(.flexible)
@@ -195,6 +215,115 @@ struct ContentView: View {
                 showTablePicker = false
             }
         }
+    }
+
+    private var editor: some View {
+        MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: CGFloat(fontSizeInt), separatorWidth: 1.0, theme: theme, onTextViewReady: { textView in
+            DispatchQueue.main.async { editorTextView = textView }
+        })
+    }
+
+    private var preview: some View {
+        MarkdownRenderer(markdown: document.text, theme: theme, fontSize: CGFloat(fontSizeInt), documentURL: fileURL)
+    }
+
+    /// Mindestbreite von Editor und Vorschau in der geteilten Ansicht.
+    private static let minPaneWidth: CGFloat = 200
+
+    private func editorWidth(in totalWidth: CGFloat) -> CGFloat {
+        let available = max(0, totalWidth - PaneDivider.width)
+        return (available * PaneDivider.clamp(splitFraction, totalWidth: available, minPaneWidth: Self.minPaneWidth)).rounded()
+    }
+}
+
+enum ViewMode: String, CaseIterable, Identifiable {
+    case editor, split, preview
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .editor: "Editor"
+        case .split: "Editor and Preview"
+        case .preview: "Preview"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .editor: "pencil"
+        case .split: "rectangle.split.2x1"
+        case .preview: "eye"
+        }
+    }
+
+    var help: String {
+        switch self {
+        case .editor: "Show editor only"
+        case .split: "Show editor and preview side by side"
+        case .preview: "Show Markdown preview only"
+        }
+    }
+}
+
+/// Senkrechter Trenner zwischen Editor und Vorschau. Ziehen ändert die Breiten,
+/// ein Doppelklick teilt das Fenster wieder in zwei gleich breite Hälften.
+private struct PaneDivider: View {
+    /// Sichtbare Breite der Linie.
+    static let width: CGFloat = 1
+    /// Breite des Bereichs, in dem die Maus den Trenner greift.
+    private static let grabWidth: CGFloat = 10
+
+    @Binding var fraction: Double
+    /// Gemeinsame Breite von Editor und Vorschau (ohne Trenner).
+    let totalWidth: CGFloat
+    let minPaneWidth: CGFloat
+
+    @State private var dragStartFraction: Double?
+
+    /// Begrenzt den Anteil so, dass beide Seiten mindestens `minPaneWidth` breit sind.
+    static func clamp(_ fraction: Double, totalWidth: CGFloat, minPaneWidth: CGFloat) -> Double {
+        guard totalWidth > 2 * minPaneWidth else { return 0.5 }
+        let minimum = Double(minPaneWidth / totalWidth)
+        return min(max(fraction, minimum), 1 - minimum)
+    }
+
+    var body: some View {
+        Rectangle()
+            .fill(Color(nsColor: .separatorColor))
+            .frame(width: Self.width)
+            .overlay {
+                // Der Greifbereich ragt über die Linie hinaus in Editor und Vorschau.
+                Color.clear
+                    .frame(width: Self.grabWidth)
+                    .contentShape(Rectangle())
+                    .pointerStyle(.columnResize)
+                    .gesture(drag)
+                    .onTapGesture(count: 2) { fraction = 0.5 }
+            }
+            .zIndex(1)
+            .accessibilityElement()
+            .accessibilityLabel("Divider between editor and preview")
+            .accessibilityValue("\(Int((fraction * 100).rounded())) percent")
+            .accessibilityAdjustableAction { direction in
+                let step = direction == .increment ? 0.05 : -0.05
+                fraction = Self.clamp(fraction + step, totalWidth: totalWidth, minPaneWidth: minPaneWidth)
+            }
+    }
+
+    private var drag: some Gesture {
+        // Globale Koordinaten: Der Trenner wandert beim Ziehen mit, lokale Werte würden springen.
+        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+            .onChanged { value in
+                guard totalWidth > 0 else { return }
+                let start = dragStartFraction ?? Self.clamp(fraction, totalWidth: totalWidth, minPaneWidth: minPaneWidth)
+                dragStartFraction = start
+                let proposed = start + Double(value.translation.width / totalWidth)
+                fraction = Self.clamp(proposed, totalWidth: totalWidth, minPaneWidth: minPaneWidth)
+            }
+            .onEnded { _ in
+                dragStartFraction = nil
+            }
     }
 }
 

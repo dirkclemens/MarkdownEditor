@@ -196,6 +196,97 @@ expectCode("a ``b` |\"", true)
 expectCode("a \\`b |\"", false)
 expectCode("say |\"hi\"", false)
 
+// MARK: - HTML-Konverter
+
+func expectHTML(_ input: String, _ expected: String, line: Int = #line) {
+    let actual = MarkdownHTMLConverter().convert(input)
+    if actual == expected {
+        passed += 1
+    } else {
+        failures += 1
+        print("FEHLER (Zeile \(line))")
+        print("  Eingabe:  \(input.debugDescription)")
+        print("  Erwartet: \(expected.debugDescription)")
+        print("  Ist:      \(actual.debugDescription)")
+    }
+}
+
+// Überschriften
+expectHTML("# H1", "<h1 id=\"h1\">H1</h1>\n")
+expectHTML("## Zwei ##", "<h2 id=\"zwei\">Zwei</h2>\n")
+expectHTML("### My Great Heading {#custom-id}", "<h3 id=\"custom-id\">My Great Heading</h3>\n")
+expectHTML("Titel\n=====", "<h1 id=\"titel\">Titel</h1>\n")
+expectHTML("Sub\n---", "<h2 id=\"sub\">Sub</h2>\n")
+expectHTML("# A\n# A", "<h1 id=\"a\">A</h1>\n<h1 id=\"a-1\">A</h1>\n")
+expectHTML("#hashtag", "<p>#hashtag</p>\n")
+
+// Absätze und Zeilenumbrüche
+expectHTML("a\nb\n\nc", "<p>a\nb</p>\n<p>c</p>\n")
+expectHTML("a  \nb", "<p>a<br />\nb</p>\n")
+expectHTML("a\\\nb", "<p>a<br />\nb</p>\n")
+
+// Hervorhebung
+expectHTML("**bold** *it* ***both***", "<p><strong>bold</strong> <em>it</em> <em><strong>both</strong></em></p>\n")
+expectHTML("*kursiv mit **fett** darin*", "<p><em>kursiv mit <strong>fett</strong> darin</em></p>\n")
+expectHTML("snake_case_name und 2 * 3 * 4", "<p>snake_case_name und 2 * 3 * 4</p>\n")
+expectHTML("__a__ _b_", "<p><strong>a</strong> <em>b</em></p>\n")
+expectHTML("~~weg~~ ==mark== H~2~O X^2^", "<p><del>weg</del> <mark>mark</mark> H<sub>2</sub>O X<sup>2</sup></p>\n")
+expectHTML("a ~b c~ d", "<p>a ~b c~ d</p>\n")
+expectHTML("\\*kein\\* <b>", "<p>*kein* <b></p>\n")
+expectHTML("`a < b` und ``x ` y``", "<p><code>a &lt; b</code> und <code>x ` y</code></p>\n")
+expectHTML("Tom & Jerry &copy;", "<p>Tom &amp; Jerry &copy;</p>\n")
+
+// Links und Bilder
+expectHTML("[Guide](https://x.de \"Titel\")", "<p><a href=\"https://x.de\" title=\"Titel\">Guide</a></p>\n")
+expectHTML("[a](https://x.de/a_(b))", "<p><a href=\"https://x.de/a_(b)\">a</a></p>\n")
+expectHTML("![alt *text*](tux.png)", "<p><img src=\"tux.png\" alt=\"alt text\" /></p>\n")
+expectHTML("[text][ref]\n\n[ref]: https://x.de", "<p><a href=\"https://x.de\">text</a></p>\n")
+expectHTML("[Ref]\n\n[ref]: https://x.de 'T'", "<p><a href=\"https://x.de\" title=\"T\">Ref</a></p>\n")
+expectHTML("<https://x.de> und <a@b.de>", "<p><a href=\"https://x.de\">https://x.de</a> und <a href=\"mailto:a@b.de\">a@b.de</a></p>\n")
+expectHTML("siehe https://x.de/a.", "<p>siehe <a href=\"https://x.de/a\">https://x.de/a</a>.</p>\n")
+expectHTML("[kein Link]", "<p>[kein Link]</p>\n")
+expectHTML("So lustig! :joy: 10:30:45", "<p>So lustig! <span class=\"emoji\" title=\":joy:\">😂</span> 10:30:45</p>\n")
+expectHTML("[link mit https://x.de](https://y.de)", "<p><a href=\"https://y.de\">link mit https://x.de</a></p>\n")
+do {
+    let converter = MarkdownHTMLConverter(resolveImage: { $0 == "bild.png" ? "data:image/png;base64,AA==" : nil })
+    let actual = converter.convert("![b](bild.png) ![c](https://x.de/c.png)")
+    let expected = "<p><img src=\"data:image/png;base64,AA==\" alt=\"b\" /> <img src=\"https://x.de/c.png\" alt=\"c\" /></p>\n"
+    report(actual == expected, "resolveImage", expected: expected, actual: [("html", actual)], line: #line)
+}
+
+// Blöcke
+expectHTML("> zitat\nweiter\n> > tief", "<blockquote>\n<p>zitat\nweiter</p>\n<blockquote>\n<p>tief</p>\n</blockquote>\n</blockquote>\n")
+expectHTML("---", "<hr />\n")
+expectHTML("* * *", "<hr />\n")
+expectHTML("```swift\nlet a = \"<b>\"\n```", "<pre><code class=\"language-swift\">let a = &quot;&lt;b&gt;&quot;\n</code></pre>\n")
+expectHTML("```\nunclosed", "<pre><code>unclosed\n</code></pre>\n")
+expectHTML("text\n\n    code\n    more", "<p>text</p>\n<pre><code>code\nmore\n</code></pre>\n")
+expectHTML("<div>\n*roh*\n</div>", "<div>\n*roh*\n</div>\n")
+
+// Listen
+expectHTML("- a\n- b", "<ul>\n<li>a</li>\n<li>b</li>\n</ul>\n")
+expectHTML("3. a\n4. b", "<ol start=\"3\">\n<li>a</li>\n<li>b</li>\n</ol>\n")
+expectHTML("- a\n\n- b", "<ul>\n<li>\n<p>a</p>\n</li>\n<li>\n<p>b</p>\n</li>\n</ul>\n")
+expectHTML("- a\n    - b\n- c", "<ul>\n<li>a\n<ul>\n<li>b</li>\n</ul>\n</li>\n<li>c</li>\n</ul>\n")
+expectHTML("1. a\n   - b", "<ol>\n<li>a\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ol>\n")
+expectHTML("- [x] done\n- [ ] open",
+           "<ul class=\"task-list\">\n<li class=\"task-list-item done\"><input type=\"checkbox\" disabled checked /> done</li>\n<li class=\"task-list-item\"><input type=\"checkbox\" disabled /> open</li>\n</ul>\n")
+expectHTML("- a\n- b\n\nAbsatz", "<ul>\n<li>a</li>\n<li>b</li>\n</ul>\n<p>Absatz</p>\n")
+expectHTML("- a\n* b", "<ul>\n<li>a</li>\n</ul>\n<ul>\n<li>b</li>\n</ul>\n")
+expectHTML("Text\n- a", "<p>Text</p>\n<ul>\n<li>a</li>\n</ul>\n")
+expectHTML("Jahr\n2024. war gut", "<p>Jahr\n2024. war gut</p>\n")
+
+// Tabellen
+expectHTML("| A | B |\n| :-- | --: |\n| 1 | `x|y` |\n| 2 |",
+           "<table>\n<thead>\n<tr><th style=\"text-align: left\">A</th><th style=\"text-align: right\">B</th></tr>\n</thead>\n<tbody>\n<tr><td style=\"text-align: left\">1</td><td style=\"text-align: right\"><code>x|y</code></td></tr>\n<tr><td style=\"text-align: left\">2</td><td style=\"text-align: right\"></td></tr>\n</tbody>\n</table>\n")
+expectHTML("prosa mit | pipe", "<p>prosa mit | pipe</p>\n")
+
+// Fußnoten und Definitionslisten
+expectHTML("Satz.[^1]\n\n[^1]: Die Fußnote.",
+           "<p>Satz.<sup class=\"footnote-ref\"><a href=\"#fn-1\" id=\"fnref-1\">1</a></sup></p>\n<section class=\"footnotes\">\n<ol>\n<li id=\"fn-1\">\n<p>Die Fußnote. <a href=\"#fnref-1\" class=\"footnote-backref\">↩︎</a></p>\n</li>\n</ol>\n</section>\n")
+expectHTML("Ohne[^x]", "<p>Ohne[^x]</p>\n")
+expectHTML("term\n: definition\n: zweite", "<dl>\n<dt>term</dt>\n<dd>definition</dd>\n<dd>zweite</dd>\n</dl>\n")
+
 // MARK: - Cheat Sheet
 
 do {
