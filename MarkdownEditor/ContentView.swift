@@ -11,16 +11,13 @@ import os
 
 struct ContentView: View {
     @Binding var document: MarkdownEditorDocument
-    @State private var cursorPosition: Int? = nil
-    @State private var selectionRange: NSRange? = nil
-    @State private var fontSize: CGFloat = 16
-    @State private var selectedTheme: String = "Light"
     @State private var showPreview: Bool = false
     @State private var showImagePicker: Bool = false
     @State private var showTablePicker: Bool = false
-    @State private var selectedHeader: Int = 1
-    
+    @State private var editorTextView: NSTextView?
+
     @AppStorage("FontSize") private var fontSizeInt: Int = 16
+    @AppStorage("selectedTheme") private var selectedTheme: String = "Light"
     
     var logger = Logger(subsystem: "de.adcore.Markdown", category: "ContentView")
     
@@ -49,17 +46,9 @@ struct ContentView: View {
                     MarkdownRenderer(markdown: document.text)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: fontSize, separatorWidth: 1.0, theme: theme, onCursorPositionChanged: { pos in
-                        DispatchQueue.main.async { cursorPosition = pos }
-                    }, onSelectionChanged: { range in
-                        DispatchQueue.main.async { selectionRange = range }
+                    MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: CGFloat(fontSizeInt), separatorWidth: 1.0, theme: theme, onTextViewReady: { textView in
+                        DispatchQueue.main.async { editorTextView = textView }
                     })
-                    .padding()
-                }
-            }
-            .onAppear {
-                if let savedTheme = UserDefaults.standard.string(forKey: "selectedTheme"), themes.keys.contains(savedTheme) {
-                    selectedTheme = savedTheme
                 }
             }
             .toolbar {
@@ -105,25 +94,16 @@ struct ContentView: View {
                 }
                 
                 ToolbarItemGroup() {
-                    Picker("Heading", selection: $selectedHeader) {
-                        ForEach(1...6, id: \ .self) { level in
-                            Text("H\(level)").tag(level)
+                    Menu {
+                        ForEach(1...6, id: \.self) { level in
+                            Button("H\(level)") {
+                                applyMarkdownFormatting(.heading(level))
+                            }
                         }
+                    } label: {
+                        Label("Heading", systemImage: "number")
                     }
                     .help("Insert Markdown heading")
-                    .pickerStyle(MenuPickerStyle())
-                    .frame(width: 60)
-                    .onChange(of: selectedHeader) { _, newValue in
-                        switch newValue {
-                        case 1: applyMarkdownFormatting(.header1)
-                        case 2: applyMarkdownFormatting(.header2)
-                        case 3: applyMarkdownFormatting(.header3)
-                        case 4: applyMarkdownFormatting(.header4)
-                        case 5: applyMarkdownFormatting(.header5)
-                        case 6: applyMarkdownFormatting(.header6)
-                        default: break
-                        }
-                    }
                     Button("Code", systemImage: "chevron.left.forwardslash.chevron.right") {
                         applyMarkdownFormatting(.inlineCode)
                     } .help("Inline code")
@@ -181,10 +161,6 @@ struct ContentView: View {
                     .help("Select font size")
                     .pickerStyle(MenuPickerStyle())
                     .frame(width: 60)
-                    .onChange(of: fontSizeInt) { _, newValue in
-                        fontSize = CGFloat(newValue)
-                        logger.debug("Font size changed to \(fontSize, format: .fixed(precision: 0))")
-                    }
                 }
                 
                 ToolbarSpacer(.flexible)
@@ -198,19 +174,13 @@ struct ContentView: View {
                     .help("Select editor theme")
                     .pickerStyle(MenuPickerStyle())
                     .frame(width: 120)
-                    .onChange(of: selectedTheme) { _, newValue in
-                        UserDefaults.standard.set(newValue, forKey: "selectedTheme")
-                        logger.debug("Theme changed to \(newValue)")
-                    }
                 }
             } // toolbar
         }
         .background(WindowFrameSaver(windowKey: "MarkdownEditorMainWindow"))
         .sheet(isPresented: $showImagePicker) {
             ImagePickerSheet { emoji in
-                let pos = cursorPosition ?? document.text.count
-                document.text.insert(contentsOf: emoji, at: document.text.index(document.text.startIndex, offsetBy: pos))
-                logger.debug("Inserted emoji/image: \(emoji), at position: \(pos)")
+                insertAtCursor(emoji)
                 showImagePicker = false
             }
         }
@@ -220,9 +190,8 @@ struct ContentView: View {
                 let separator = Array(repeating: " :--- ", count: columns).joined(separator: " | ")
                 let body = (0..<rows-1).map { _ in "| " + Array(repeating: "Cell", count: columns).joined(separator: " | ") + " |" }.joined(separator: "\n")
                 let markdownTable = "| " + header + " |\n| " + separator + " |\n" + (body.isEmpty ? "" : body + "\n")
-                let pos = cursorPosition ?? document.text.count
-                document.text.insert(contentsOf: markdownTable, at: document.text.index(document.text.startIndex, offsetBy: pos))
-                logger.debug("Inserted Markdown table: \(columns)x\(rows) at position: \(pos)")
+                insertAtCursor(markdownTable)
+                logger.debug("Inserted Markdown table: \(columns)x\(rows)")
                 showTablePicker = false
             }
         }
@@ -259,12 +228,12 @@ private struct WindowFrameSaver: NSViewRepresentable {
 }
 
 extension ContentView {
-    
-    enum MarkdownFormatting {
+
+    enum MarkdownFormatting: Equatable {
         case italic, bold, strikethrough, inlineCode, codeBlock
-        case header1, header2, header3, header4, header5, header6
+        case heading(Int)
         case unorderedList, orderedList, checkList, link, image
-        
+
         var wrapper: String? {
             switch self {
             case .italic: return "*"
@@ -274,99 +243,215 @@ extension ContentView {
             default: return nil
             }
         }
-        
-        var prefix: String? {
-            switch self {
-            case .header1: return "# "
-            case .header2: return "## "
-            case .header3: return "### "
-            case .header4: return "#### "
-            case .header5: return "##### "
-            case .header6: return "###### "
-            case .unorderedList: return "- "
-            case .orderedList: return "1. "
-            case .checkList: return "- [ ] "
-            case .codeBlock: return "```"
-            default: return nil
-            }
-        }
     }
-    
+
+    /// Die Text View des Editors, sofern sie gerade in einem Fenster angezeigt wird.
+    private var activeTextView: NSTextView? {
+        guard let editorTextView, editorTextView.window != nil else { return nil }
+        return editorTextView
+    }
+
+    private func insertAtCursor(_ string: String) {
+        guard let textView = activeTextView else { return }
+        let range = textView.selectedRange()
+        replace(range, with: string, in: textView,
+                select: NSRange(location: range.location + (string as NSString).length, length: 0))
+    }
+
     private func applyMarkdownFormatting(_ formatting: MarkdownFormatting) {
-        if let textView = NSApp.keyWindow?.firstResponder as? NSTextView {
-            applyFormatting(using: textView, formatting: formatting)
-            return
-        }
-        
-        let text = document.text
-        if let range = selectionRange, range.length > 0 {
-            let nsText = text as NSString
-            let selected = nsText.substring(with: range)
-            var replacement = selected
-            if let wrapper = formatting.wrapper {
-                replacement = wrapper + selected + wrapper
-            } else if let prefix = formatting.prefix {
-                replacement = prefix + selected
-            } else if formatting == .link {
-                replacement = "[link text: " + selected + "](" + selected + ")"
-            } else if formatting == .image {
-                replacement = "![alt text: " + selected + "](" + selected + ")"
-            }
-            let newText = nsText.replacingCharacters(in: range, with: replacement)
-            document.text = newText
-        } else {
-            let pos = cursorPosition ?? text.count
-            var newText = text
-            if let wrapper = formatting.wrapper {
-                let placeholder = "text"
-                let formatted = wrapper + placeholder + wrapper
-                newText.insert(contentsOf: formatted, at: newText.index(newText.startIndex, offsetBy: pos))
-            } else if let prefix = formatting.prefix {
-                let line = prefix + "text"
-                newText.insert(contentsOf: line, at: newText.index(newText.startIndex, offsetBy: pos))
-            } else if formatting == .link {
-                let link = "[link text](https://example.com)"
-                newText.insert(contentsOf: link, at: newText.index(newText.startIndex, offsetBy: pos))
-            } else if formatting == .image {
-                let image = "![alt text](./logo.png)"
-                newText.insert(contentsOf: image, at: newText.index(newText.startIndex, offsetBy: pos))
-            }
-            document.text = newText
-        }
+        guard let textView = activeTextView else { return }
+        applyFormatting(using: textView, formatting: formatting)
     }
 
     private func applyFormatting(using textView: NSTextView, formatting: MarkdownFormatting) {
-        let nsText = textView.string as NSString
-        let selectedRange = textView.selectedRange()
-        let hasSelection = selectedRange.length > 0
-        let selected = hasSelection ? nsText.substring(with: selectedRange) : ""
-        var replacement = selected
-        
-        if let wrapper = formatting.wrapper {
-            if hasSelection {
-                replacement = wrapper + selected + wrapper
-            } else {
-                replacement = wrapper + "text" + wrapper
-            }
-        } else if let prefix = formatting.prefix {
-            if hasSelection {
-                replacement = prefix + selected
-            } else {
-                replacement = prefix + "text"
-            }
-        } else if formatting == .link {
-            replacement = hasSelection ? "[link text: " + selected + "](" + selected + ")" : "[link text](https://example.com)"
-        } else if formatting == .image {
-            replacement = hasSelection ? "![alt text: " + selected + "](" + selected + ")" : "![alt text](./logo.png)"
+        switch formatting {
+        case .italic, .bold, .strikethrough, .inlineCode:
+            toggleWrapper(formatting.wrapper ?? "", in: textView)
+        case .heading, .unorderedList, .orderedList, .checkList:
+            prefixLines(formatting, in: textView)
+        case .codeBlock:
+            insertCodeBlock(in: textView)
+        case .link:
+            insertLink(image: false, in: textView)
+        case .image:
+            insertLink(image: true, in: textView)
         }
-        
-        let range = hasSelection ? selectedRange : NSRange(location: selectedRange.location, length: 0)
-        if textView.shouldChangeText(in: range, replacementString: replacement) {
-            textView.textStorage?.replaceCharacters(in: range, with: replacement)
-            textView.didChangeText()
-            let replacementLength = (replacement as NSString).length
-            textView.setSelectedRange(NSRange(location: range.location + replacementLength, length: 0))
-            document.text = textView.string
+    }
+
+    /// Ersetzt einen Bereich als eigenen Undo-Schritt und setzt danach die Auswahl.
+    private func replace(_ range: NSRange, with string: String, in textView: NSTextView, select selection: NSRange) {
+        textView.breakUndoCoalescing()
+        guard textView.shouldChangeText(in: range, replacementString: string) else { return }
+        textView.textStorage?.replaceCharacters(in: range, with: string)
+        textView.didChangeText()
+        textView.setSelectedRange(selection)
+        textView.scrollRangeToVisible(selection)
+    }
+
+    // MARK: Fett, kursiv, durchgestrichen, Inline-Code
+
+    /// Fügt das Wrapper-Paar hinzu oder entfernt es, wenn die Auswahl bereits davon umschlossen ist.
+    private func toggleWrapper(_ wrapper: String, in textView: NSTextView) {
+        let text = textView.string as NSString
+        let selection = textView.selectedRange()
+        let width = (wrapper as NSString).length
+        guard width > 0 else { return }
+        let marker = (wrapper as NSString).character(at: 0)
+        let asterisk: unichar = 0x2A
+
+        func run(from start: Int, step: Int, limit: Int) -> Int {
+            var count = 0
+            var i = start
+            while (step > 0 ? i < limit : i >= limit), text.character(at: i) == marker {
+                count += 1
+                i += step
+            }
+            return count
         }
+        // *** ist fett und kursiv zugleich: passt sowohl zu * als auch zu **.
+        func isWrapper(_ count: Int) -> Bool {
+            marker == asterisk ? (count == width || count == 3) : count >= width
+        }
+
+        // Wrapper innerhalb der Auswahl: **wort** markiert
+        if selection.length > 2 * width {
+            let leading = run(from: selection.location, step: 1, limit: NSMaxRange(selection))
+            let trailing = run(from: NSMaxRange(selection) - 1, step: -1, limit: selection.location)
+            if leading < selection.length, isWrapper(leading), isWrapper(trailing) {
+                let inner = NSRange(location: selection.location + width, length: selection.length - 2 * width)
+                replace(selection, with: text.substring(with: inner), in: textView,
+                        select: NSRange(location: selection.location, length: inner.length))
+                return
+            }
+        }
+
+        // Wrapper direkt außerhalb der Auswahl: wort markiert in **wort**
+        let before = run(from: selection.location - 1, step: -1, limit: 0)
+        let after = run(from: NSMaxRange(selection), step: 1, limit: text.length)
+        if isWrapper(before), isWrapper(after) {
+            let outer = NSRange(location: selection.location - width, length: selection.length + 2 * width)
+            replace(outer, with: text.substring(with: selection), in: textView,
+                    select: NSRange(location: outer.location, length: selection.length))
+            return
+        }
+
+        // Hinzufügen; ohne Auswahl steht der Cursor danach zwischen den Zeichen.
+        let selected = text.substring(with: selection)
+        replace(selection, with: wrapper + selected + wrapper, in: textView,
+                select: NSRange(location: selection.location + width, length: selection.length))
+    }
+
+    // MARK: Überschriften und Listen
+
+    /// Setzt das Präfix an den Anfang jeder ausgewählten Zeile (ein Undo-Schritt).
+    private func prefixLines(_ formatting: MarkdownFormatting, in textView: NSTextView) {
+        let text = textView.string as NSString
+        let selection = textView.selectedRange()
+        let lineRange = text.lineRange(for: selection)
+        let block = text.substring(with: lineRange)
+
+        var lines = block.components(separatedBy: "\n")
+        let hasTrailingNewline = block.hasSuffix("\n")
+        if hasTrailingNewline { lines.removeLast() }
+        let singleLine = lines.count <= 1
+
+        var number = 1
+        let transformed = lines.map { line -> String in
+            if !singleLine, line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return line
+            }
+            switch formatting {
+            case .heading(let level):
+                let content = LinePattern.remove(LinePattern.heading, from: line)
+                return String(repeating: "#", count: level) + " " + content
+            case .unorderedList, .orderedList, .checkList:
+                let indent = String(line.prefix { $0 == " " || $0 == "\t" })
+                let content = LinePattern.remove(LinePattern.listMarker, from: String(line.dropFirst(indent.count)))
+                let marker: String
+                switch formatting {
+                case .orderedList:
+                    marker = "\(number). "
+                    number += 1
+                case .checkList:
+                    marker = "- [ ] "
+                default:
+                    marker = "- "
+                }
+                return indent + marker + content
+            default:
+                return line
+            }
+        }
+
+        let replacement = transformed.joined(separator: "\n") + (hasTrailingNewline ? "\n" : "")
+        let newSelection: NSRange
+        if singleLine {
+            // Cursor ans Ende der bearbeiteten Zeile
+            newSelection = NSRange(location: lineRange.location + ((transformed.first ?? "") as NSString).length, length: 0)
+        } else {
+            let length = (replacement as NSString).length - (hasTrailingNewline ? 1 : 0)
+            newSelection = NSRange(location: lineRange.location, length: length)
+        }
+        replace(lineRange, with: replacement, in: textView, select: newSelection)
+    }
+
+    // MARK: Codeblock
+
+    private func insertCodeBlock(in textView: NSTextView) {
+        let text = textView.string as NSString
+        let selection = textView.selectedRange()
+        let end = NSMaxRange(selection)
+        let atLineStart = selection.location == 0 || text.character(at: selection.location - 1) == 0x0A
+        let atLineEnd = end == text.length || text.character(at: end) == 0x0A
+
+        var content = text.substring(with: selection)
+        var trailing = atLineEnd ? "" : "\n"
+        if content.hasSuffix("\n") {
+            content.removeLast()
+            trailing = "\n"
+        }
+        let opening = (atLineStart ? "" : "\n") + "```\n"
+        let replacement = opening + content + "\n```" + trailing
+
+        // Mit Auswahl bleibt der Inhalt markiert, ohne Auswahl steht der Cursor in der leeren Zeile.
+        let contentStart = selection.location + (opening as NSString).length
+        replace(selection, with: replacement, in: textView,
+                select: NSRange(location: contentStart, length: (content as NSString).length))
+    }
+
+    // MARK: Link und Bild
+
+    private func insertLink(image: Bool, in textView: NSTextView) {
+        let text = textView.string as NSString
+        let selection = textView.selectedRange()
+        let prefix = image ? "![" : "["
+        let prefixLength = (prefix as NSString).length
+
+        if selection.length > 0 {
+            // [Auswahl](url) – danach ist "url" markiert
+            let label = text.substring(with: selection)
+            let replacement = prefix + label + "](url)"
+            let urlLocation = selection.location + prefixLength + (label as NSString).length + 2
+            replace(selection, with: replacement, in: textView,
+                    select: NSRange(location: urlLocation, length: 3))
+        } else {
+            // Ohne Auswahl: Platzhalter einfügen, der Text in den eckigen Klammern ist markiert
+            let label = image ? "alt text" : "link text"
+            let target = image ? "./logo.png" : "https://example.com"
+            let replacement = prefix + label + "](" + target + ")"
+            replace(selection, with: replacement, in: textView,
+                    select: NSRange(location: selection.location + prefixLength, length: (label as NSString).length))
+        }
+    }
+}
+
+/// Muster für vorhandene Zeilen-Präfixe, die beim Formatieren ersetzt werden.
+private enum LinePattern {
+    static let heading = try! NSRegularExpression(pattern: #"^#{1,6}(?:[ \t]+|$)"#)
+    static let listMarker = try! NSRegularExpression(pattern: #"^(?:[-*+]|\d{1,9}[.)])[ \t]+(?:\[[ xX]\][ \t]+)?"#)
+
+    static func remove(_ pattern: NSRegularExpression, from line: String) -> String {
+        let range = NSRange(location: 0, length: (line as NSString).length)
+        return pattern.stringByReplacingMatches(in: line, range: range, withTemplate: "")
     }
 }

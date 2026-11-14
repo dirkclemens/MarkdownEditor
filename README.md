@@ -19,8 +19,8 @@ MarkdownEditor is a simple and user-friendly macOS app for editing (and previewi
 3. Build and run the app on your Mac.
 
 ## Requirements
-- macOS 12.0 or later
-- Xcode 13 or later
+- macOS 26.0 or later
+- Xcode 26 or later
 
 ## Folder Structure
 - `MarkdownEditor/` – Main app source code
