@@ -8,6 +8,7 @@ MarkdownEditor is a simple and user-friendly macOS app for editing (and previewi
 - Edit (and preview) Markdown files in real time
 - Insert and manage images
 - Table editing support
+- Find and replace (⌘F, ⌥⌘F)
 - Clean and intuitive interface
 
 ## Getting Started

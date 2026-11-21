@@ -13,5 +13,9 @@ struct MarkdownEditorApp: App {
         DocumentGroup(newDocument: MarkdownEditorDocument()) { file in
             ContentView(document: file.$document, fileURL: file.fileURL)
         }
+        .commands {
+            // Bearbeiten › Suchen: Suchen, Suchen und Ersetzen, Weitersuchen, Auswahl suchen
+            FindCommands()
+        }
     }
 }

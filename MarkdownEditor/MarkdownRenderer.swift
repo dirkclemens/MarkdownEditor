@@ -16,6 +16,8 @@ struct MarkdownRenderer: NSViewRepresentable {
     var fontSize: CGFloat = 16
     /// Speicherort des Dokuments: Basis für relative Links und Bilder.
     var documentURL: URL? = nil
+    /// Suche in der Vorschau; markiert die Treffer nach jeder Aktualisierung neu.
+    var finder: PreviewFinder? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -33,7 +35,14 @@ struct MarkdownRenderer: NSViewRepresentable {
         webView.onAppearanceChange = { [weak coordinator] in
             coordinator?.refreshStyle()
         }
+        webView.onCancel = { [weak finder] in
+            guard let finder, finder.isVisible else { return false }
+            finder.hide()
+            return true
+        }
+        finder?.webView = webView
         coordinator.webView = webView
+        coordinator.finder = finder
         coordinator.update(markdown: markdown, theme: theme, fontSize: fontSize, documentURL: documentURL)
         return webView
     }
@@ -44,6 +53,7 @@ struct MarkdownRenderer: NSViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         weak var webView: PreviewWebView?
+        weak var finder: PreviewFinder?
         private var markdown: String?
         private var theme: MarkdownEditorTheme?
         private var fontSize: CGFloat = 0
@@ -85,6 +95,7 @@ struct MarkdownRenderer: NSViewRepresentable {
                     self.contentUpdate = nil
                     self.convert()
                     self.run("document.getElementById('content').innerHTML = html;", arguments: ["html": self.html])
+                    self.finder?.contentDidChange()
                 }
             }
         }
@@ -142,6 +153,7 @@ struct MarkdownRenderer: NSViewRepresentable {
             // Beim ersten Laden hing die View evtl. noch nicht im Fenster; die Farben
             // wurden dann für die falsche Darstellung (hell/dunkel) berechnet.
             refreshStyle()
+            finder?.contentDidChange()
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
@@ -303,16 +315,26 @@ struct MarkdownRenderer: NSViewRepresentable {
         .footnote-ref a, .footnote-backref { color: var(--footnote); }
         .footnotes { font-size: .875em; color: var(--muted); border-top: 1px solid var(--rule); margin-top: 2em; padding-top: 1em; }
         .footnotes li > p { margin: .25em 0; }
+
+        ::highlight(md-find) { background-color: rgba(255, 214, 0, .4); }
+        ::highlight(md-find-current) { background-color: rgb(255, 190, 0); color: #000; }
         """
     }
 }
 
 final class PreviewWebView: WKWebView {
     var onAppearanceChange: (() -> Void)?
+    /// Escape: gibt `true` zurück, wenn die Taste verarbeitet wurde (Suchleiste geschlossen).
+    var onCancel: (() -> Bool)?
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         onAppearanceChange?()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53, onCancel?() == true { return }
+        super.keyDown(with: event)
     }
 }
 

@@ -40,6 +40,9 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.allowsUndo = true
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.textContainer?.lineFragmentPadding = 0
+        // Suchen und Ersetzen über die systemeigene Suchleiste (⌘F, ⌥⌘F, ⌘G, ⇧⌘G, ⌘E).
+        textView.usesFindBar = true
+        textView.isIncrementalSearchingEnabled = true
 
         containerView.addSubview(lineNumberView)
         containerView.addSubview(scrollView)
@@ -69,15 +72,19 @@ struct MarkdownEditor: NSViewRepresentable {
         coordinator.applyStyle(to: textView)
         coordinator.highlightNow()
 
-        // Zeilennummern bei jeder Scroll-Bewegung neu zeichnen (Maus, Tastatur, programmatisch).
+        // Zeilennummern bei jeder Scroll-Bewegung neu zeichnen (Maus, Tastatur, programmatisch)
+        // und wenn die Suchleiste den sichtbaren Bereich verschiebt.
         scrollView.contentView.postsBoundsChangedNotifications = true
-        coordinator.scrollObserver = NotificationCenter.default.addObserver(
-            forName: NSView.boundsDidChangeNotification,
-            object: scrollView.contentView,
-            queue: .main
-        ) { [weak lineNumberView] _ in
-            MainActor.assumeIsolated {
-                lineNumberView?.needsDisplay = true
+        scrollView.contentView.postsFrameChangedNotifications = true
+        coordinator.observers = [NSView.boundsDidChangeNotification, NSView.frameDidChangeNotification].map { name in
+            NotificationCenter.default.addObserver(
+                forName: name,
+                object: scrollView.contentView,
+                queue: .main
+            ) { [weak lineNumberView] _ in
+                MainActor.assumeIsolated {
+                    lineNumberView?.needsDisplay = true
+                }
             }
         }
 
@@ -124,7 +131,7 @@ struct MarkdownEditor: NSViewRepresentable {
         var textView: NSTextView?
         var lineNumberView: LineNumberView?
         var scrollView: NSScrollView?
-        nonisolated(unsafe) var scrollObserver: NSObjectProtocol?
+        nonisolated(unsafe) var observers: [NSObjectProtocol] = []
         private var pendingHighlight: DispatchWorkItem?
         var appliedTheme: MarkdownEditorTheme?
         var appliedFontSize: CGFloat?
@@ -141,9 +148,7 @@ struct MarkdownEditor: NSViewRepresentable {
         }
 
         deinit {
-            if let scrollObserver {
-                NotificationCenter.default.removeObserver(scrollObserver)
-            }
+            observers.forEach(NotificationCenter.default.removeObserver)
         }
 
         func textDidChange(_ notification: Notification) {
@@ -318,10 +323,14 @@ final class LineNumberView: NSView {
         let origin = textView.textContainerOrigin
         let visibleContainerRect = visibleRect.offsetBy(dx: -origin.x, dy: -origin.y)
 
+        // Ist die Suchleiste eingeblendet, beginnt der Textbereich weiter unten:
+        // Nummern nur neben dem sichtbaren Text zeichnen, nicht neben der Suchleiste.
+        NSBezierPath.clip(convert(scrollView.contentView.frame, from: scrollView))
+
         func drawNumber(_ number: Int, in fragmentRect: NSRect) {
             let label = "\(number)" as NSString
             let size = label.size(withAttributes: attributes)
-            let y = fragmentRect.minY + origin.y - visibleRect.minY
+            let y = convert(NSPoint(x: 0, y: fragmentRect.minY + origin.y), from: textView).y
             label.draw(at: NSPoint(x: bounds.width - size.width - 10, y: y), withAttributes: attributes)
         }
 

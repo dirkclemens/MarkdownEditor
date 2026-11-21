@@ -19,6 +19,8 @@ struct ContentView: View {
     @State private var showImagePicker: Bool = false
     @State private var showTablePicker: Bool = false
     @State private var editorTextView: NSTextView?
+    /// Suchen und Ersetzen in Editor und Vorschau (Menü Bearbeiten › Suchen).
+    @State private var findController = FindController()
 
     @AppStorage("FontSize") private var fontSizeInt: Int = 16
     @AppStorage("selectedTheme") private var selectedTheme: String = "Light"
@@ -198,6 +200,7 @@ struct ContentView: View {
             } // toolbar
         }
         .background(WindowFrameSaver(windowKey: "MarkdownEditorMainWindow"))
+        .focusedSceneValue(\.findController, findController)
         .sheet(isPresented: $showImagePicker) {
             ImagePickerSheet { emoji in
                 insertAtCursor(emoji)
@@ -219,12 +222,22 @@ struct ContentView: View {
 
     private var editor: some View {
         MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: CGFloat(fontSizeInt), separatorWidth: 1.0, theme: theme, onTextViewReady: { textView in
-            DispatchQueue.main.async { editorTextView = textView }
+            DispatchQueue.main.async {
+                editorTextView = textView
+                findController.editor = textView
+            }
         })
     }
 
     private var preview: some View {
-        MarkdownRenderer(markdown: document.text, theme: theme, fontSize: CGFloat(fontSizeInt), documentURL: fileURL)
+        VStack(spacing: 0) {
+            if findController.preview.isVisible {
+                PreviewFindBar(finder: findController.preview)
+                Divider()
+            }
+            MarkdownRenderer(markdown: document.text, theme: theme, fontSize: CGFloat(fontSizeInt),
+                             documentURL: fileURL, finder: findController.preview)
+        }
     }
 
     /// Mindestbreite von Editor und Vorschau in der geteilten Ansicht.
