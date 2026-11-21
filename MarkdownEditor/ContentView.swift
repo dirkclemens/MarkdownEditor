@@ -13,7 +13,8 @@ struct ContentView: View {
     @Binding var document: MarkdownEditorDocument
     var fileURL: URL? = nil
     /// Ansicht pro Fenster: Editor, Editor und Vorschau nebeneinander oder nur Vorschau.
-    @SceneStorage("ViewMode") private var viewMode: ViewMode = .editor
+    /// Neue Fenster öffnen in der Ansicht aus den Einstellungen (fest oder zuletzt gewählt).
+    @SceneStorage("ViewMode") private var viewMode: ViewMode = .initial
     /// Anteil des Editors an der Fensterbreite in der geteilten Ansicht.
     @AppStorage("SplitFraction") private var splitFraction: Double = 0.5
     @State private var showImagePicker: Bool = false
@@ -22,27 +23,19 @@ struct ContentView: View {
     /// Suchen und Ersetzen in Editor und Vorschau (Menü Bearbeiten › Suchen).
     @State private var findController = FindController()
 
-    @AppStorage("FontSize") private var fontSizeInt: Int = 16
-    @AppStorage("selectedTheme") private var selectedTheme: String = "Light"
+    @AppStorage(SettingsKey.fontSize) private var fontSizeInt: Int = SettingsKey.defaultFontSize
+    @AppStorage(SettingsKey.theme) private var selectedTheme: String = "Light"
+    @AppStorage(SettingsKey.showLineNumbers) private var showLineNumbers = true
+    @AppStorage(SettingsKey.spellChecking) private var spellChecking = false
+    @AppStorage(SettingsKey.autocorrection) private var autocorrection = false
+    @AppStorage(SettingsKey.smartQuotes) private var smartQuotes = false
+    @AppStorage(SettingsKey.textReplacement) private var textReplacement = false
     
     var logger = Logger(subsystem: "de.adcore.Markdown", category: "ContentView")
     
-    let themes: [String: MarkdownEditorTheme] = [
-        "Dark": darkTheme,
-        "Dracula": draculaTheme,
-        "Gruvbox Dark": gruvboxDarkTheme,
-        "Light": lightTheme,
-        "Monokai": monokaiDarkTheme,
-        "Nord": nordTheme,
-        "One Dark": oneDarkTheme,
-        "Pastel": pastelTheme,
-        "Solarized Dark": solarizedDarkTheme,
-        "Solarized Light": solarizedLightTheme,
-        "Tomorrow Night": tomorrowNightTheme
-    ]
     
     var theme: MarkdownEditorTheme {
-        themes[selectedTheme] ?? lightTheme
+        MarkdownEditorTheme.named[selectedTheme] ?? lightTheme
     }
     
     var body: some View {
@@ -165,7 +158,7 @@ struct ContentView: View {
                     .keyboardShortcut("-", modifiers: [.command])
                     .help("Decrease font size")
                     Button("Aa", systemImage: "textformat.size") {
-                        fontSizeInt = 16
+                        fontSizeInt = SettingsKey.defaultFontSize
                     }
                     .keyboardShortcut("0", modifiers: [.command])
                     .help("Default font size")
@@ -189,7 +182,7 @@ struct ContentView: View {
 
                 ToolbarItemGroup() {
                     Picker("Theme", selection: $selectedTheme) {
-                        ForEach(Array(themes.keys).sorted(), id: \ .self) { name in
+                        ForEach(MarkdownEditorTheme.named.keys.sorted(), id: \.self) { name in
                             Text(name).tag(name)
                         }
                     }
@@ -200,7 +193,9 @@ struct ContentView: View {
             } // toolbar
         }
         .background(WindowFrameSaver(windowKey: "MarkdownEditorMainWindow"))
+        .background(DocumentWindowReporter())
         .focusedSceneValue(\.findController, findController)
+        .onChange(of: viewMode) { ViewMode.lastUsed = viewMode }
         .sheet(isPresented: $showImagePicker) {
             ImagePickerSheet { emoji in
                 insertAtCursor(emoji)
@@ -221,12 +216,19 @@ struct ContentView: View {
     }
 
     private var editor: some View {
-        MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: CGFloat(fontSizeInt), separatorWidth: 1.0, theme: theme, onTextViewReady: { textView in
+        MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: CGFloat(fontSizeInt), separatorWidth: 1.0,
+                       theme: theme, options: editorOptions, onTextViewReady: { textView in
             DispatchQueue.main.async {
                 editorTextView = textView
                 findController.editor = textView
             }
         })
+    }
+
+    private var editorOptions: EditorOptions {
+        EditorOptions(showLineNumbers: showLineNumbers, spellChecking: spellChecking,
+                      autocorrection: autocorrection, smartQuotes: smartQuotes,
+                      textReplacement: textReplacement)
     }
 
     private var preview: some View {
@@ -253,6 +255,18 @@ enum ViewMode: String, CaseIterable, Identifiable {
     case editor, split, preview
 
     var id: Self { self }
+
+    /// Zuletzt gewählte Ansicht (in den Einstellungen der App gespeichert).
+    static var lastUsed: ViewMode {
+        get { UserDefaults.standard.string(forKey: SettingsKey.lastViewMode).flatMap(ViewMode.init(rawValue:)) ?? .editor }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: SettingsKey.lastViewMode) }
+    }
+
+    /// Ansicht für neue Fenster laut Einstellungen.
+    static var initial: ViewMode {
+        let start = UserDefaults.standard.string(forKey: SettingsKey.startViewMode).flatMap(StartViewMode.init(rawValue:))
+        return (start ?? .lastUsed).viewMode
+    }
 
     var title: String {
         switch self {

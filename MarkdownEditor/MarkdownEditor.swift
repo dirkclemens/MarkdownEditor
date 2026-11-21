@@ -14,14 +14,17 @@ struct MarkdownEditor: NSViewRepresentable {
     var fontSize: CGFloat
     let separatorWidth: CGFloat
     let theme: MarkdownEditorTheme
+    var options: EditorOptions
     var onTextViewReady: ((NSTextView) -> Void)? = nil
 
-    init(text: Binding<String>, gutterWidth: CGFloat = 50, fontSize: CGFloat = 14, separatorWidth: CGFloat = 1.0, theme: MarkdownEditorTheme, onTextViewReady: ((NSTextView) -> Void)? = nil) {
+    init(text: Binding<String>, gutterWidth: CGFloat = 50, fontSize: CGFloat = 14, separatorWidth: CGFloat = 1.0, theme: MarkdownEditorTheme,
+         options: EditorOptions = EditorOptions(), onTextViewReady: ((NSTextView) -> Void)? = nil) {
         self._text = text
         self.gutterWidth = gutterWidth
         self.fontSize = fontSize
         self.separatorWidth = separatorWidth
         self.theme = theme
+        self.options = options
         self.onTextViewReady = onTextViewReady
     }
 
@@ -47,11 +50,13 @@ struct MarkdownEditor: NSViewRepresentable {
         containerView.addSubview(lineNumberView)
         containerView.addSubview(scrollView)
 
+        let gutterConstraint = lineNumberView.widthAnchor.constraint(equalToConstant: gutterWidth)
+        coordinator.gutterConstraint = gutterConstraint
         NSLayoutConstraint.activate([
             lineNumberView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             lineNumberView.topAnchor.constraint(equalTo: containerView.topAnchor),
             lineNumberView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-            lineNumberView.widthAnchor.constraint(equalToConstant: gutterWidth),
+            gutterConstraint,
 
             scrollView.leadingAnchor.constraint(equalTo: lineNumberView.trailingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
@@ -70,6 +75,7 @@ struct MarkdownEditor: NSViewRepresentable {
 
         textView.string = text
         coordinator.applyStyle(to: textView)
+        coordinator.applyOptions(to: textView)
         coordinator.highlightNow()
 
         // Zeilennummern bei jeder Scroll-Bewegung neu zeichnen (Maus, Tastatur, programmatisch)
@@ -116,6 +122,9 @@ struct MarkdownEditor: NSViewRepresentable {
             coordinator.applyStyle(to: textView)
             needsHighlight = true
         }
+        if coordinator.appliedOptions != options {
+            coordinator.applyOptions(to: textView)
+        }
         if needsHighlight {
             coordinator.highlightNow()
             coordinator.lineNumberView?.needsDisplay = true
@@ -135,6 +144,8 @@ struct MarkdownEditor: NSViewRepresentable {
         private var pendingHighlight: DispatchWorkItem?
         var appliedTheme: MarkdownEditorTheme?
         var appliedFontSize: CGFloat?
+        var appliedOptions: EditorOptions?
+        var gutterConstraint: NSLayoutConstraint?
         /// Tokens des letzten Highlight-Durchlaufs (Grundlage für das inkrementelle Einfärben).
         private var lastTokens: [MarkdownToken]?
         /// Seit dem letzten Durchlauf geänderter Bereich (heutige Koordinaten) und Längenänderung.
@@ -258,6 +269,18 @@ struct MarkdownEditor: NSViewRepresentable {
             lineNumberView?.fontSize = parent.fontSize
             appliedTheme = theme
             appliedFontSize = parent.fontSize
+        }
+
+        /// Zeilennummern und Schreibhilfen laut Einstellungen.
+        func applyOptions(to textView: NSTextView) {
+            let options = parent.options
+            textView.isContinuousSpellCheckingEnabled = options.spellChecking
+            textView.isAutomaticSpellingCorrectionEnabled = options.autocorrection
+            textView.isAutomaticQuoteSubstitutionEnabled = options.smartQuotes
+            textView.isAutomaticTextReplacementEnabled = options.textReplacement
+            gutterConstraint?.constant = options.showLineNumbers ? parent.gutterWidth : 0
+            lineNumberView?.isHidden = !options.showLineNumbers
+            appliedOptions = options
         }
     }
 }

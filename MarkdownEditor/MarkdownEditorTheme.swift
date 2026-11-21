@@ -301,6 +301,23 @@ let tomorrowNightTheme = MarkdownEditorTheme(
 )
 
 extension MarkdownEditorTheme {
+    /// Alle Themes mit ihrem Namen in der Auswahl.
+    static let named: [String: MarkdownEditorTheme] = [
+        "Dark": darkTheme,
+        "Dracula": draculaTheme,
+        "Gruvbox Dark": gruvboxDarkTheme,
+        "Light": lightTheme,
+        "Monokai": monokaiDarkTheme,
+        "Nord": nordTheme,
+        "One Dark": oneDarkTheme,
+        "Pastel": pastelTheme,
+        "Solarized Dark": solarizedDarkTheme,
+        "Solarized Light": solarizedLightTheme,
+        "Tomorrow Night": tomorrowNightTheme
+    ]
+}
+
+extension MarkdownEditorTheme {
     /// Gedimmte Farbe für Syntaxzeichen (**, #, `, Klammern).
     var markupColor: NSColor {
         textColor.blended(withFraction: 0.5, of: backgroundColor) ?? .secondaryLabelColor

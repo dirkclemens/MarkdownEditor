@@ -164,7 +164,7 @@
 				INFOPLIST_FILE = MarkdownEditor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Markdown Editor";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2025 Dirk Clemens";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -201,7 +201,7 @@
 				INFOPLIST_FILE = MarkdownEditor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Markdown Editor";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2025 Dirk Clemens";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

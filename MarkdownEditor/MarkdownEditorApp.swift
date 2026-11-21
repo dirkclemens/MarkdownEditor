@@ -9,6 +9,10 @@ import SwiftUI
 
 @main
 struct MarkdownEditorApp: App {
+    init() {
+        SettingsKey.registerDefaults()
+    }
+
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownEditorDocument()) { file in
             ContentView(document: file.$document, fileURL: file.fileURL)
@@ -16,6 +20,21 @@ struct MarkdownEditorApp: App {
         .commands {
             // Bearbeiten › Suchen: Suchen, Suchen und Ersetzen, Weitersuchen, Auswahl suchen
             FindCommands()
+            AboutCommands()
         }
+
+        Settings {
+            SettingsView()
+        }
+
+        Window("About Markdown Editor", id: AboutView.windowID) {
+            AboutView()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.suppressed)
+        .commandsRemoved()
     }
 }
