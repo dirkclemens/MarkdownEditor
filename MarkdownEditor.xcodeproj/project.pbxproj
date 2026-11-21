@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		431A51C92EA69631002EC43E /* Markdown.icon in Resources */ = {isa = PBXBuildFile; fileRef = 431A51C82EA69631002EC43E /* Markdown.icon */; };
+		04C20CF93228275321BE26D8 /* MarkdownEditorKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4A90420F8CB7AD757BC03EB1 /* MarkdownEditorKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				04C20CF93228275321BE26D8 /* MarkdownEditorKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +86,7 @@
 			);
 			name = MarkdownEditor;
 			packageProductDependencies = (
+				4A90420F8CB7AD757BC03EB1 /* MarkdownEditorKit */,
 			);
 			productName = MarkdownEditor;
 			productReference = 43C8D0E62EA694BD006C5AC5 /* MarkdownEditor.app */;
@@ -113,6 +116,9 @@
 			);
 			mainGroup = 43C8D0DD2EA694BD006C5AC5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				33D419CB865D5D9E6F87D4F4 /* XCRemoteSwiftPackageReference "MarkdownEditorKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 43C8D0E72EA694BD006C5AC5 /* Products */;
 			projectDirPath = "";
@@ -365,6 +371,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		33D419CB865D5D9E6F87D4F4 /* XCRemoteSwiftPackageReference "MarkdownEditorKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/dirkclemens/MarkdownEditorKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4A90420F8CB7AD757BC03EB1 /* MarkdownEditorKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 33D419CB865D5D9E6F87D4F4 /* XCRemoteSwiftPackageReference "MarkdownEditorKit" */;
+			productName = MarkdownEditorKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 43C8D0DE2EA694BD006C5AC5 /* Project object */;
 }

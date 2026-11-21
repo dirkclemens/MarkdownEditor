@@ -9,6 +9,7 @@
 import AppKit
 import SwiftUI
 import WebKit
+import MarkdownEditorKit
 
 struct MarkdownRenderer: NSViewRepresentable {
     let markdown: String

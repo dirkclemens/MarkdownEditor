@@ -26,6 +26,10 @@ MarkdownEditor is a simple and user-friendly macOS app for editing (and previewi
 ## Folder Structure
 - `MarkdownEditor/` – Main app source code
 
+The editor component, themes and the Markdown-to-HTML converter live in the
+Swift package [MarkdownEditorKit](https://github.com/dirkclemens/MarkdownEditorKit),
+which is shared with [xNotes](https://github.com/dirkclemens/xNotes).
+
 ## License
 MIT License
 

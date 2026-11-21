@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import MarkdownEditorKit
 
 struct SettingsView: View {
     var body: some View {
@@ -71,7 +72,7 @@ private struct EditorSettingsView: View {
         Form {
             Section("Appearance") {
                 Picker("Theme", selection: $theme) {
-                    ForEach(MarkdownEditorTheme.named.keys.sorted(), id: \.self) { name in
+                    ForEach(MarkdownEditorTheme.builtInThemes.keys.sorted(), id: \.self) { name in
                         Text(name).tag(name)
                     }
                 }

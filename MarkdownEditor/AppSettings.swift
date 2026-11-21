@@ -65,12 +65,3 @@ enum StartViewMode: String, CaseIterable, Identifiable {
         }
     }
 }
-
-/// Einstellungen, die das Verhalten der Text View im Editor bestimmen.
-struct EditorOptions: Equatable {
-    var showLineNumbers = true
-    var spellChecking = false
-    var autocorrection = false
-    var smartQuotes = false
-    var textReplacement = false
-}

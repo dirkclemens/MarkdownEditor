@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import MarkdownEditorKit
 
 struct AboutView: View {
     private static let repositoryURL = URL(string: "https://github.com/dirkclemens/MarkdownEditor")!
@@ -51,7 +52,7 @@ struct AboutView: View {
             HStack(spacing: 8) {
                 Feature(title: "Live Preview", systemImage: "rectangle.split.2x1")
                 Feature(title: "Highlighting", systemImage: "paintbrush")
-                Feature(title: "\(MarkdownEditorTheme.named.count) Themes", systemImage: "swatchpalette")
+                Feature(title: "\(MarkdownEditorTheme.builtInThemes.count) Themes", systemImage: "swatchpalette")
             }
             .padding(.top, 20)
 

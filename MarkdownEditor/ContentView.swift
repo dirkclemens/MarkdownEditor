@@ -8,6 +8,7 @@
 import SwiftUI
 import AppKit
 import os
+import MarkdownEditorKit
 
 struct ContentView: View {
     @Binding var document: MarkdownEditorDocument
@@ -35,7 +36,7 @@ struct ContentView: View {
     
     
     var theme: MarkdownEditorTheme {
-        MarkdownEditorTheme.named[selectedTheme] ?? lightTheme
+        MarkdownEditorTheme.builtInThemes[selectedTheme] ?? lightTheme
     }
     
     var body: some View {
@@ -182,7 +183,7 @@ struct ContentView: View {
 
                 ToolbarItemGroup() {
                     Picker("Theme", selection: $selectedTheme) {
-                        ForEach(MarkdownEditorTheme.named.keys.sorted(), id: \.self) { name in
+                        ForEach(MarkdownEditorTheme.builtInThemes.keys.sorted(), id: \.self) { name in
                             Text(name).tag(name)
                         }
                     }
@@ -216,8 +217,9 @@ struct ContentView: View {
     }
 
     private var editor: some View {
-        MarkdownEditor(text: $document.text, gutterWidth: 50, fontSize: CGFloat(fontSizeInt), separatorWidth: 1.0,
-                       theme: theme, options: editorOptions, onTextViewReady: { textView in
+        MarkdownEditor(text: $document.text,
+                       font: .monospacedSystemFont(ofSize: CGFloat(fontSizeInt), weight: .regular),
+                       theme: theme, options: editorOptions, gutterWidth: 50, onTextViewReady: { textView in
             DispatchQueue.main.async {
                 editorTextView = textView
                 findController.editor = textView
@@ -226,7 +228,7 @@ struct ContentView: View {
     }
 
     private var editorOptions: EditorOptions {
-        EditorOptions(showLineNumbers: showLineNumbers, spellChecking: spellChecking,
+        EditorOptions(showsLineNumbers: showLineNumbers, usesFindBar: true, spellChecking: spellChecking,
                       autocorrection: autocorrection, smartQuotes: smartQuotes,
                       textReplacement: textReplacement)
     }
