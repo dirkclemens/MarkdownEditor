@@ -28,6 +28,8 @@ struct MarkdownRenderer: NSViewRepresentable {
         let configuration = WKWebViewConfiguration()
         // Skripte aus dem Dokument laufen nicht; die App selbst darf weiterhin JavaScript ausführen.
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        // Lokale Bilder (relativ zum Dokument oder absolute Pfade) über das eigene Schema laden.
+        configuration.setURLSchemeHandler(LocalFileSchemeHandler(), forURLScheme: LocalFileSchemeHandler.scheme)
 
         let webView = PreviewWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
@@ -107,9 +109,8 @@ struct MarkdownRenderer: NSViewRepresentable {
             contentUpdate = nil
             guard let markdown else { return }
             let start = ContinuousClock.now
-            html = MarkdownHTMLConverter(resolveImage: { [documentURL] in
-                Self.inlineImage($0, relativeTo: documentURL)
-            }).convert(markdown)
+            // Bildpfade bleiben unverändert; relative Pfade löst die Basis-URL der Seite auf.
+            html = MarkdownHTMLConverter().convert(markdown)
             conversionTime = ContinuousClock.now - start
         }
 
@@ -144,7 +145,7 @@ struct MarkdownRenderer: NSViewRepresentable {
             </body>
             </html>
             """
-            webView.loadHTMLString(page, baseURL: documentURL)
+            webView.loadHTMLString(page, baseURL: LocalFileSchemeHandler.baseURL(for: documentURL))
         }
 
         // MARK: WKNavigationDelegate
@@ -171,7 +172,8 @@ struct MarkdownRenderer: NSViewRepresentable {
                 return
             }
             // Alle anderen Links im Standardprogramm öffnen (Browser, Mail, Finder).
-            NSWorkspace.shared.open(url)
+            // Relative Links zeigen wegen der Basis-URL ins eigene Schema – zurück auf die Datei.
+            NSWorkspace.shared.open(LocalFileSchemeHandler.fileURL(for: url) ?? url)
             decisionHandler(.cancel)
         }
 
@@ -179,33 +181,6 @@ struct MarkdownRenderer: NSViewRepresentable {
             var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
             components?.fragment = nil
             return components?.string ?? url.absoluteString
-        }
-
-        // MARK: Bilder
-
-        nonisolated private static let imageTypes = [
-            "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif",
-            "webp": "image/webp", "svg": "image/svg+xml", "bmp": "image/bmp", "ico": "image/x-icon",
-            "tif": "image/tiff", "tiff": "image/tiff", "heic": "image/heic"
-        ]
-
-        /// Lokale Bilder als data:-URL einbetten. Die Web-Inhalte selbst dürfen keine
-        /// Dateien lesen; ohne Zugriffsrecht der App (Sandbox) bleibt das Ziel unverändert.
-        nonisolated private static func inlineImage(_ path: String, relativeTo documentURL: URL?) -> String? {
-            let decoded = path.removingPercentEncoding ?? path
-            let url: URL
-            if decoded.hasPrefix("/") {
-                url = URL(fileURLWithPath: decoded)
-            } else if let directory = documentURL?.deletingLastPathComponent() {
-                url = directory.appendingPathComponent(decoded)
-            } else {
-                return nil
-            }
-            guard let type = imageTypes[url.pathExtension.lowercased()],
-                  let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize, size <= 20_000_000,
-                  let data = try? Data(contentsOf: url)
-            else { return nil }
-            return "data:\(type);base64,\(data.base64EncodedString())"
         }
 
         // MARK: CSS

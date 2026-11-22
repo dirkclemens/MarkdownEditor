@@ -25,6 +25,26 @@ enum SettingsKey {
 
     static let defaultFontSize = 16
 
+    private static let migratedSandboxPreferences = "MigratedSandboxPreferences"
+
+    /// Bis Version 1.2 lief die App in der Sandbox; ihre Einstellungen liegen noch im
+    /// Container. Einmalig übernehmen, ohne inzwischen gesetzte Werte zu überschreiben.
+    static func migrateSandboxPreferences() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: migratedSandboxPreferences),
+              let bundleID = Bundle.main.bundleIdentifier
+        else { return }
+        // Vorher setzen: Verweigert macOS den Zugriff auf den Container, nicht erneut fragen.
+        defaults.set(true, forKey: migratedSandboxPreferences)
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: "Library/Containers/\(bundleID)/Data/Library/Preferences/\(bundleID).plist")
+        guard let old = NSDictionary(contentsOf: url) as? [String: Any] else { return }
+        let current = defaults.persistentDomain(forName: bundleID) ?? [:]
+        for (key, value) in old where current[key] == nil {
+            defaults.set(value, forKey: key)
+        }
+    }
+
     /// Standardwerte registrieren; die Schreibhilfen folgen anfangs den Systemeinstellungen.
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [

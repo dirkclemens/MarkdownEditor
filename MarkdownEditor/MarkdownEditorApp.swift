@@ -10,6 +10,7 @@ import SwiftUI
 @main
 struct MarkdownEditorApp: App {
     init() {
+        SettingsKey.migrateSandboxPreferences()
         SettingsKey.registerDefaults()
     }
 
