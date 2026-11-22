@@ -6,12 +6,21 @@ MarkdownEditor is a simple and user-friendly macOS app for editing (and previewi
 
 ## Features
 - Edit (and preview) Markdown files in real time
-- Insert and manage images
+- Insert and manage images; local images next to the document show up in the preview (`![](image.png)` or `<img src="image.png">`)
 - Table editing support
 - Find and replace (⌘F, ⌥⌘F)
 - Clean and intuitive interface
 
-## Getting Started
+## Installation
+
+### Prebuilt DMG
+A ready-to-run build is available on the [Releases](https://github.com/dirkclemens/MarkdownEditor/releases/latest) page as `MarkdownEditor.dmg` (ad-hoc signed, Apple Silicon only). Since it isn't notarized by Apple, macOS blocks it on first launch. Remove the quarantine flag before opening:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/MarkdownEditor.app
+```
+
+### Build from source
 1. Clone the repository:
    ```bash
    git clone https://github.com/dirkclemens/MarkdownEditor.git
